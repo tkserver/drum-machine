@@ -176,11 +176,7 @@
   }
 
   .sequencer-bg {
-    background: 
-      linear-gradient(90deg, hsl(var(--grid-line)) 1px, transparent 1px),
-      linear-gradient(180deg, hsl(var(--grid-line)) 1px, transparent 1px),
-      hsl(var(--background));
-    background-size: 32px 32px;
+    background: hsl(var(--background));
   }
 
   .transport-gradient {
@@ -248,25 +244,22 @@
   }
 
   .step-button {
-    @apply w-full h-8 cursor-pointer transition-all duration-75;
+    @apply w-full h-10 cursor-pointer transition-all duration-75;
     background: hsl(var(--step-inactive));
-    border: 2px solid hsl(var(--grid-line));
+    border: none;
   }
 
   .step-button:hover {
     background: hsl(var(--muted));
-    border-color: hsl(var(--primary) / 0.5);
   }
 
   .step-button.active {
     background: hsl(var(--step-active));
-    border-color: hsl(var(--primary));
     @apply glow-step;
   }
 
   .step-button.current {
-    border-color: hsl(var(--step-current));
-    border-width: 3px;
+    box-shadow: inset 0 0 0 3px hsl(var(--step-current));
   }
 
   .step-button.active.current {

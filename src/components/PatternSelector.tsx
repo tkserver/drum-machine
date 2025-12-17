@@ -22,7 +22,7 @@ export const PatternSelector = ({
   const currentPattern = patterns.find((p) => p.id === currentPatternId);
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 border-b-4 border-border bg-card/50">
+    <div className="flex items-center gap-4 px-4 py-3 border-b-4 border-border bg-card/50">
       {/* Pattern tabs */}
       <div className="flex items-center gap-1">
         {patterns.map((pattern, index) => (
@@ -30,7 +30,7 @@ export const PatternSelector = ({
             key={pattern.id}
             onClick={() => onSelectPattern(pattern.id)}
             className={cn(
-              'px-3 py-1 font-pixel text-[8px] transition-all border-4',
+              'px-4 py-2 font-pixel text-xs transition-all border-4',
               pattern.id === currentPatternId
                 ? cn(
                     PATTERN_COLORS[index % PATTERN_COLORS.length],
@@ -44,22 +44,22 @@ export const PatternSelector = ({
         ))}
         <button
           onClick={onAddPattern}
-          className="p-1 bg-muted border-4 border-border hover:border-primary/50 transition-colors text-muted-foreground hover:text-foreground"
+          className="p-2 bg-muted border-4 border-border hover:border-primary/50 transition-colors text-muted-foreground hover:text-foreground"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
 
       {/* Separator */}
-      <div className="h-6 w-1 bg-border" />
+      <div className="h-8 w-1 bg-border" />
 
       {/* Pattern length */}
       <div className="flex items-center gap-2">
-        <span className="font-pixel text-[8px] text-muted-foreground">STEPS:</span>
+        <span className="font-pixel text-xs text-muted-foreground">STEPS:</span>
         <select
           value={currentPattern?.length || 16}
           onChange={(e) => onSetLength(parseInt(e.target.value))}
-          className="pixel-select px-2 py-1 text-sm"
+          className="pixel-select px-3 py-2 text-lg"
         >
           {[4, 8, 12, 16, 24, 32, 48, 64].map((len) => (
             <option key={len} value={len}>{len}</option>
@@ -71,9 +71,9 @@ export const PatternSelector = ({
       {patterns.length > 1 && (
         <button
           onClick={() => onDeletePattern(currentPatternId)}
-          className="p-1 border-4 border-border hover:bg-destructive/20 hover:border-destructive/50 transition-colors text-muted-foreground hover:text-destructive"
+          className="p-2 border-4 border-border hover:bg-destructive/20 hover:border-destructive/50 transition-colors text-muted-foreground hover:text-destructive"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-5 h-5" />
         </button>
       )}
     </div>

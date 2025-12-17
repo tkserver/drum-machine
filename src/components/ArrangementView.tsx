@@ -136,23 +136,23 @@ export const ArrangementView = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden scanlines">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b-4 border-border bg-card">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-pixel text-[10px] text-muted-foreground uppercase tracking-wider">
+            <h2 className="font-pixel text-xs text-muted-foreground uppercase tracking-wider">
               Arrangement
             </h2>
             <h3 className="font-pixel-body text-2xl text-foreground">{arrangement.name}</h3>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="font-pixel text-[8px] text-muted-foreground">BARS:</span>
+              <span className="font-pixel text-xs text-muted-foreground">BARS:</span>
               <select
                 value={arrangement.totalBars}
                 onChange={(e) => onSetLength?.(parseInt(e.target.value))}
-                className="pixel-select px-2 py-1"
+                className="pixel-select px-3 py-2 text-lg"
               >
                 {[8, 16, 32, 64, 128].map((len) => (
                   <option key={len} value={len}>{len}</option>
@@ -165,8 +165,8 @@ export const ArrangementView = ({
 
       <div className="flex flex-1 overflow-hidden">
         {/* Pattern library */}
-        <div className="w-44 shrink-0 border-r-4 border-border bg-card p-3 overflow-y-auto scrollbar-thin">
-          <h3 className="font-pixel text-[8px] text-muted-foreground uppercase tracking-wider mb-3">
+        <div className="w-48 shrink-0 border-r-4 border-border bg-card p-4 overflow-y-auto scrollbar-thin">
+          <h3 className="font-pixel text-xs text-muted-foreground uppercase tracking-wider mb-3">
             Patterns
           </h3>
           <div className="space-y-2">
@@ -178,22 +178,22 @@ export const ArrangementView = ({
                 onDragEnd={handlePatternDragEnd}
                 onClick={() => onSelectPattern(pattern.id)}
                 className={cn(
-                  'pattern-block p-2 cursor-grab active:cursor-grabbing',
+                  'pattern-block p-3 cursor-grab active:cursor-grabbing',
                   PATTERN_COLORS[index % PATTERN_COLORS.length],
                   currentPatternId === pattern.id && 'border-foreground glow-green'
                 )}
               >
-                <span className="font-pixel text-[8px] text-primary-foreground block">
+                <span className="font-pixel text-xs text-primary-foreground block">
                   {pattern.name}
                 </span>
-                <span className="font-pixel-body text-sm text-primary-foreground/70">
+                <span className="font-pixel-body text-lg text-primary-foreground/70">
                   {pattern.length} steps
                 </span>
               </div>
             ))}
           </div>
-          <div className="mt-4 p-2 border-4 border-dashed border-muted text-center">
-            <p className="font-pixel text-[6px] text-muted-foreground leading-relaxed">
+          <div className="mt-4 p-3 border-4 border-dashed border-muted text-center">
+            <p className="font-pixel text-xs text-muted-foreground leading-relaxed">
               DRAG TO<br/>TIMELINE
             </p>
           </div>
@@ -209,10 +209,9 @@ export const ArrangementView = ({
                   key={bar}
                   style={{ width: barWidth }}
                   className={cn(
-                    'shrink-0 h-8 flex items-center justify-center',
-                    'font-pixel-body text-lg',
-                    bar % 4 === 0 ? 'text-foreground bg-muted/30' : 'text-muted-foreground',
-                    'border-r-2 border-border'
+                    'shrink-0 h-10 flex items-center justify-center',
+                    'font-pixel-body text-xl',
+                    bar % 4 === 0 ? 'text-foreground bg-muted/30' : 'text-muted-foreground'
                   )}
                 >
                   {bar + 1}
@@ -224,7 +223,7 @@ export const ArrangementView = ({
           {/* Arrangement track */}
           <div 
             ref={timelineRef}
-            className="flex-1 overflow-auto scrollbar-thin sequencer-bg"
+            className="flex-1 overflow-auto scrollbar-thin bg-background"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -236,16 +235,15 @@ export const ArrangementView = ({
                 minHeight: trackHeight * 3,
               }}
             >
-              {/* Grid lines */}
+              {/* Grid lines - only on bar boundaries */}
               {Array.from({ length: arrangement.totalBars }).map((_, bar) => (
-                <div
-                  key={bar}
-                  className={cn(
-                    'absolute top-0 bottom-0',
-                    bar % 4 === 0 ? 'border-l-4 border-border' : 'border-l-2 border-grid-line'
-                  )}
-                  style={{ left: bar * barWidth }}
-                />
+                bar % 4 === 0 && (
+                  <div
+                    key={bar}
+                    className="absolute top-0 bottom-0 border-l-2 border-border/30"
+                    style={{ left: bar * barWidth }}
+                  />
+                )
               ))}
 
               {/* Drop indicator */}
@@ -285,8 +283,8 @@ export const ArrangementView = ({
                     onClick={() => setSelectedBlockId(block.id)}
                   >
                     <div className="flex items-center gap-2 overflow-hidden">
-                      <GripHorizontal className="w-4 h-4 text-primary-foreground/50 shrink-0" />
-                      <span className="font-pixel text-[8px] text-primary-foreground truncate">
+                      <GripHorizontal className="w-5 h-5 text-primary-foreground/50 shrink-0" />
+                      <span className="font-pixel text-xs text-primary-foreground truncate">
                         {pattern.name}
                       </span>
                     </div>
@@ -332,8 +330,8 @@ export const ArrangementView = ({
       </div>
 
       {/* Instructions */}
-      <div className="p-2 border-t-4 border-border bg-card">
-        <p className="font-pixel text-[8px] text-muted-foreground text-center">
+      <div className="p-3 border-t-4 border-border bg-card">
+        <p className="font-pixel text-xs text-muted-foreground text-center">
           DRAG FROM LIBRARY • CLICK TO SELECT • DRAG TO MOVE • DEL TO REMOVE
         </p>
       </div>
