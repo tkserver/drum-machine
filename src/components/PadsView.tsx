@@ -8,39 +8,49 @@ interface PadsViewProps {
   onSelectSound?: (soundId: string) => void;
 }
 
+const KEY_LABELS = ['Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V', '1', '2', '3', '4'];
+
 export const PadsView = ({ sounds, onTrigger, selectedSoundId, onSelectSound }: PadsViewProps) => {
   return (
-    <div className="flex-1 p-6 overflow-auto">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="font-mono text-sm text-muted-foreground uppercase tracking-wider mb-6">
+    <div className="flex-1 p-6 overflow-auto scanlines">
+      <div className="max-w-3xl mx-auto">
+        <h2 className="font-pixel text-[10px] text-muted-foreground uppercase tracking-wider mb-4">
           Drum Pads
         </h2>
         
-        <div className="grid grid-cols-4 gap-4">
-          {sounds.map((sound) => (
+        <div className="grid grid-cols-4 gap-3">
+          {sounds.map((sound, index) => (
             <DrumPad
               key={sound.id}
               sound={sound}
               onTrigger={onTrigger}
               isSelected={selectedSoundId === sound.id}
               onSelect={() => onSelectSound?.(sound.id)}
+              keyLabel={KEY_LABELS[index]}
             />
           ))}
         </div>
         
-        <div className="mt-8 p-4 bg-card rounded-lg border border-border">
-          <h3 className="font-mono text-xs text-muted-foreground uppercase tracking-wider mb-3">
-            Keyboard Shortcuts
+        <div className="mt-6 p-4 bg-card border-4 border-border">
+          <h3 className="font-pixel text-[8px] text-muted-foreground uppercase tracking-wider mb-3">
+            Keyboard Controls
           </h3>
-          <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground font-mono">
-            {['Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V', '1', '2', '3', '4'].map((key, i) => (
+          <div className="grid grid-cols-4 gap-2">
+            {KEY_LABELS.map((key, i) => (
               <div key={key} className="flex items-center gap-2">
-                <span className="w-6 h-6 flex items-center justify-center bg-secondary rounded text-foreground">
+                <span className="w-6 h-6 flex items-center justify-center bg-muted border-2 border-border font-pixel text-[8px] text-foreground">
                   {key}
                 </span>
-                <span className="truncate">{sounds[i]?.name || '-'}</span>
+                <span className="font-pixel-body text-sm text-muted-foreground truncate">
+                  {sounds[i]?.name || '-'}
+                </span>
               </div>
             ))}
+          </div>
+          <div className="mt-4 pt-3 border-t-2 border-border">
+            <p className="font-pixel text-[8px] text-muted-foreground">
+              SPACE = PLAY/PAUSE • ESC = STOP
+            </p>
           </div>
         </div>
       </div>

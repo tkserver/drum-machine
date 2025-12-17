@@ -2,62 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
 @layer base {
   :root {
-    --background: 220 20% 6%;
-    --foreground: 210 20% 92%;
+    --background: 240 15% 5%;
+    --foreground: 120 100% 70%;
 
-    --card: 220 18% 10%;
-    --card-foreground: 210 20% 92%;
+    --card: 240 15% 8%;
+    --card-foreground: 120 100% 70%;
 
-    --popover: 220 18% 10%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 240 15% 8%;
+    --popover-foreground: 120 100% 70%;
 
-    --primary: 175 85% 50%;
-    --primary-foreground: 220 20% 6%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 240 15% 5%;
 
-    --secondary: 220 15% 16%;
-    --secondary-foreground: 210 20% 92%;
+    --secondary: 280 100% 60%;
+    --secondary-foreground: 240 15% 5%;
 
-    --muted: 220 15% 14%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 240 10% 15%;
+    --muted-foreground: 120 40% 50%;
 
-    --accent: 280 70% 55%;
-    --accent-foreground: 210 20% 92%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 240 15% 5%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 20% 92%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 18%;
-    --input: 220 15% 18%;
-    --ring: 175 85% 50%;
+    --border: 120 100% 30%;
+    --input: 240 10% 15%;
+    --ring: 120 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0px;
 
-    /* Custom colors for drum machine */
-    --pad-inactive: 220 15% 12%;
-    --pad-active: 175 85% 50%;
-    --pad-hover: 220 15% 18%;
-    --pad-glow: 175 85% 50%;
+    /* 8-bit colors */
+    --pixel-green: 120 100% 50%;
+    --pixel-cyan: 180 100% 50%;
+    --pixel-magenta: 300 100% 50%;
+    --pixel-yellow: 60 100% 50%;
+    --pixel-red: 0 100% 50%;
+    --pixel-blue: 220 100% 60%;
+    --pixel-orange: 30 100% 50%;
+    --pixel-purple: 280 100% 60%;
+
+    --pad-inactive: 240 15% 10%;
+    --pad-active: 120 100% 50%;
+    --pad-hover: 240 15% 15%;
+    --pad-glow: 120 100% 50%;
     
-    --grid-line: 220 15% 15%;
-    --grid-beat: 220 15% 20%;
-    --grid-bar: 220 15% 25%;
+    --grid-line: 120 100% 15%;
+    --grid-beat: 120 100% 25%;
+    --grid-bar: 120 100% 35%;
     
-    --step-active: 175 85% 50%;
-    --step-inactive: 220 15% 12%;
-    --step-current: 45 100% 55%;
+    --step-active: 120 100% 50%;
+    --step-inactive: 240 15% 12%;
+    --step-current: 60 100% 50%;
     
-    --pattern-1: 175 85% 50%;
-    --pattern-2: 280 70% 55%;
-    --pattern-3: 45 100% 55%;
-    --pattern-4: 340 80% 55%;
-    --pattern-5: 140 70% 45%;
-    --pattern-6: 200 80% 55%;
-    --pattern-7: 25 90% 55%;
-    --pattern-8: 300 70% 50%;
+    --pattern-1: 120 100% 45%;
+    --pattern-2: 300 100% 50%;
+    --pattern-3: 60 100% 50%;
+    --pattern-4: 0 100% 50%;
+    --pattern-5: 180 100% 50%;
+    --pattern-6: 220 100% 60%;
+    --pattern-7: 30 100% 50%;
+    --pattern-8: 280 100% 60%;
   }
 }
 
@@ -67,112 +76,169 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'VT323', monospace;
+    image-rendering: pixelated;
   }
 }
 
 @layer utilities {
-  .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+  .font-pixel {
+    font-family: 'Press Start 2P', cursive;
   }
   
-  .font-sans {
-    font-family: 'Inter', sans-serif;
+  .font-pixel-body {
+    font-family: 'VT323', monospace;
+  }
+
+  .pixel-border {
+    box-shadow: 
+      inset -4px -4px 0px 0px hsl(var(--background)),
+      inset 4px 4px 0px 0px hsl(120 100% 70%),
+      0 0 0 4px hsl(var(--border));
+  }
+
+  .pixel-border-thin {
+    box-shadow: 
+      inset -2px -2px 0px 0px hsl(var(--background)),
+      inset 2px 2px 0px 0px hsl(120 100% 70%),
+      0 0 0 2px hsl(var(--border));
+  }
+
+  .glow-green {
+    box-shadow: 0 0 10px hsl(var(--primary)),
+                0 0 20px hsl(var(--primary) / 0.5),
+                0 0 30px hsl(var(--primary) / 0.3);
   }
 
   .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.4),
-                0 0 40px hsl(var(--primary) / 0.2),
-                inset 0 0 20px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 10px hsl(var(--primary)),
+                0 0 20px hsl(var(--primary) / 0.5);
   }
 
   .glow-accent {
-    box-shadow: 0 0 20px hsl(var(--accent) / 0.4),
-                0 0 40px hsl(var(--accent) / 0.2);
+    box-shadow: 0 0 10px hsl(var(--accent)),
+                0 0 20px hsl(var(--accent) / 0.5);
   }
 
   .glow-step {
-    box-shadow: 0 0 8px hsl(var(--step-active) / 0.6),
-                0 0 16px hsl(var(--step-active) / 0.3);
+    box-shadow: 0 0 8px hsl(var(--step-active)),
+                0 0 16px hsl(var(--step-active) / 0.5);
   }
 
   .glow-current {
-    box-shadow: 0 0 12px hsl(var(--step-current) / 0.8),
-                0 0 24px hsl(var(--step-current) / 0.4);
+    box-shadow: 0 0 12px hsl(var(--step-current)),
+                0 0 24px hsl(var(--step-current) / 0.5);
+  }
+
+  .scanlines {
+    position: relative;
+  }
+  
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      hsl(0 0% 0% / 0.1) 2px,
+      hsl(0 0% 0% / 0.1) 4px
+    );
+    pointer-events: none;
+  }
+
+  .crt-flicker {
+    animation: crt-flicker 0.15s infinite;
+  }
+
+  @keyframes crt-flicker {
+    0% { opacity: 0.97; }
+    50% { opacity: 1; }
+    100% { opacity: 0.98; }
   }
 
   .pad-gradient {
     background: linear-gradient(
-      145deg,
+      180deg,
       hsl(var(--pad-inactive)) 0%,
-      hsl(220 15% 8%) 100%
+      hsl(240 15% 6%) 100%
     );
   }
 
   .pad-active-gradient {
     background: linear-gradient(
-      145deg,
+      180deg,
       hsl(var(--primary)) 0%,
-      hsl(175 85% 35%) 100%
+      hsl(120 100% 35%) 100%
     );
   }
 
   .sequencer-bg {
-    background: linear-gradient(
-      180deg,
-      hsl(var(--card)) 0%,
-      hsl(220 20% 7%) 100%
-    );
+    background: 
+      linear-gradient(90deg, hsl(var(--grid-line)) 1px, transparent 1px),
+      linear-gradient(180deg, hsl(var(--grid-line)) 1px, transparent 1px),
+      hsl(var(--background));
+    background-size: 32px 32px;
   }
 
   .transport-gradient {
-    background: linear-gradient(
-      90deg,
-      hsl(var(--card)) 0%,
-      hsl(220 18% 12%) 50%,
-      hsl(var(--card)) 100%
-    );
+    background: hsl(var(--card));
+    border-top: 4px solid hsl(var(--border));
   }
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+    background: hsl(var(--muted));
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 3px;
+    background: hsl(var(--primary));
   }
 }
 
 @layer components {
   .drum-pad {
-    @apply relative w-full aspect-square rounded-lg cursor-pointer transition-all duration-150;
-    @apply pad-gradient border border-border;
-    @apply hover:border-primary/50 hover:scale-[1.02];
-    @apply active:scale-95;
+    @apply relative w-full aspect-square cursor-pointer transition-all duration-75;
+    @apply pad-gradient;
+    border: 4px solid hsl(var(--border));
+    image-rendering: pixelated;
+  }
+
+  .drum-pad:hover {
+    border-color: hsl(var(--primary));
+    transform: scale(1.02);
+  }
+
+  .drum-pad:active {
+    transform: scale(0.95);
   }
 
   .drum-pad.active {
-    @apply pad-active-gradient glow-primary border-primary;
+    @apply pad-active-gradient glow-green;
+    border-color: hsl(var(--primary));
   }
 
   .drum-pad.triggered {
-    animation: pad-trigger 0.15s ease-out;
+    animation: pad-trigger 0.1s steps(2);
   }
 
   @keyframes pad-trigger {
     0% {
-      transform: scale(0.92);
+      transform: scale(0.9);
+      filter: brightness(2);
+    }
+    50% {
       filter: brightness(1.5);
     }
     100% {
@@ -182,17 +248,25 @@
   }
 
   .step-button {
-    @apply w-full h-8 rounded transition-all duration-100 cursor-pointer;
-    @apply bg-[hsl(var(--step-inactive))] border border-transparent;
-    @apply hover:bg-[hsl(var(--muted))] hover:border-border;
+    @apply w-full h-8 cursor-pointer transition-all duration-75;
+    background: hsl(var(--step-inactive));
+    border: 2px solid hsl(var(--grid-line));
+  }
+
+  .step-button:hover {
+    background: hsl(var(--muted));
+    border-color: hsl(var(--primary) / 0.5);
   }
 
   .step-button.active {
-    @apply bg-[hsl(var(--step-active))] glow-step;
+    background: hsl(var(--step-active));
+    border-color: hsl(var(--primary));
+    @apply glow-step;
   }
 
   .step-button.current {
-    @apply border-[hsl(var(--step-current))] border-2;
+    border-color: hsl(var(--step-current));
+    border-width: 3px;
   }
 
   .step-button.active.current {
@@ -200,29 +274,72 @@
   }
 
   .pattern-block {
-    @apply rounded-md cursor-pointer transition-all duration-150;
-    @apply border-2 border-transparent;
-    @apply hover:scale-105 hover:border-foreground/20;
+    @apply cursor-pointer transition-all duration-75;
+    border: 4px solid transparent;
+    image-rendering: pixelated;
+  }
+
+  .pattern-block:hover {
+    transform: scale(1.05);
+    border-color: hsl(var(--foreground) / 0.5);
   }
 
   .nav-button {
-    @apply px-4 py-2 rounded-lg font-mono text-sm uppercase tracking-wider;
-    @apply bg-secondary text-muted-foreground;
-    @apply hover:bg-muted hover:text-foreground;
-    @apply transition-all duration-150;
+    @apply px-4 py-2 font-pixel text-[10px] uppercase tracking-wider;
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border: 4px solid hsl(var(--border));
+    transition: all 0.1s steps(2);
+  }
+
+  .nav-button:hover {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--primary) / 0.5);
   }
 
   .nav-button.active {
-    @apply bg-primary text-primary-foreground glow-primary;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+    @apply glow-green;
   }
 
   .transport-button {
-    @apply p-3 rounded-full transition-all duration-150;
-    @apply bg-secondary hover:bg-muted;
-    @apply border border-border hover:border-primary/50;
+    @apply p-3 transition-all duration-75;
+    background: hsl(var(--muted));
+    border: 4px solid hsl(var(--border));
+  }
+
+  .transport-button:hover {
+    background: hsl(var(--card));
+    border-color: hsl(var(--primary) / 0.5);
   }
 
   .transport-button.playing {
-    @apply bg-primary text-primary-foreground glow-primary;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+    @apply glow-green;
+  }
+
+  .pixel-input {
+    @apply px-3 py-2 font-pixel-body text-lg;
+    background: hsl(var(--input));
+    border: 4px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .pixel-input:focus {
+    outline: none;
+    border-color: hsl(var(--primary));
+    @apply glow-green;
+  }
+
+  .pixel-select {
+    @apply font-pixel-body text-lg;
+    background: hsl(var(--input));
+    border: 4px solid hsl(var(--border));
+    color: hsl(var(--foreground));
   }
 }

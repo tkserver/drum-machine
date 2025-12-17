@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   Pattern, 
-  Track, 
-  Step, 
   Arrangement, 
   ArrangementBlock,
   TransportState, 
@@ -56,87 +54,123 @@ export const useDrumMachine = () => {
   });
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   
-  const schedulerRef = useRef<number | null>(null);
-  const nextStepTimeRef = useRef<number>(0);
-  const lastStepRef = useRef<number>(-1);
+  // Use refs for timing-critical values to avoid stale closure issues
+  const isPlayingRef = useRef(false);
+  const currentStepRef = useRef(0);
+  const currentBarRef = useRef(0);
+  const bpmRef = useRef(120);
+  const stepResolutionRef = useRef(16);
+  const tripletModeRef = useRef<'straight' | 'triplet'>('straight');
+  const patternsRef = useRef(patterns);
+  const currentPatternIdRef = useRef(currentPatternId);
+  
+  const intervalRef = useRef<number | null>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => { isPlayingRef.current = transport.isPlaying; }, [transport.isPlaying]);
+  useEffect(() => { bpmRef.current = transport.bpm; }, [transport.bpm]);
+  useEffect(() => { stepResolutionRef.current = transport.stepResolution; }, [transport.stepResolution]);
+  useEffect(() => { tripletModeRef.current = transport.tripletMode; }, [transport.tripletMode]);
+  useEffect(() => { patternsRef.current = patterns; }, [patterns]);
+  useEffect(() => { currentPatternIdRef.current = currentPatternId; }, [currentPatternId]);
 
   const currentPattern = patterns.find((p) => p.id === currentPatternId) || patterns[0];
 
-  const getStepDuration = useCallback(() => {
-    const { bpm, stepResolution, tripletMode } = transport;
-    const beatDuration = 60 / bpm;
-    const stepsPerBeat = stepResolution / 4;
-    let stepDuration = beatDuration / stepsPerBeat;
+  const getStepIntervalMs = useCallback(() => {
+    const bpm = bpmRef.current;
+    const resolution = stepResolutionRef.current;
+    const triplet = tripletModeRef.current;
     
-    if (tripletMode === 'triplet') {
-      stepDuration = (beatDuration / stepsPerBeat) * (2 / 3);
+    // Calculate milliseconds per step
+    const beatsPerMinute = bpm;
+    const stepsPerBeat = resolution / 4;
+    const msPerBeat = 60000 / beatsPerMinute;
+    let msPerStep = msPerBeat / stepsPerBeat;
+    
+    if (triplet === 'triplet') {
+      msPerStep = msPerStep * (2 / 3);
     }
     
-    return stepDuration;
-  }, [transport]);
+    return msPerStep;
+  }, []);
 
-  const scheduleStep = useCallback(() => {
-    if (!isInitialized) return;
+  const playCurrentStep = useCallback(() => {
+    if (!isPlayingRef.current) return;
+    
+    const patterns = patternsRef.current;
+    const patternId = currentPatternIdRef.current;
+    const pattern = patterns.find((p) => p.id === patternId);
+    if (!pattern) return;
 
-    const currentTime = performance.now() / 1000;
-    const stepDuration = getStepDuration();
-    const lookAhead = 0.1; // 100ms look-ahead
-
-    while (nextStepTimeRef.current < currentTime + lookAhead) {
-      const stepToPlay = transport.currentStep;
+    const step = currentStepRef.current;
+    
+    // Play all active sounds for this step
+    pattern.tracks.forEach((track) => {
+      if (track.muted) return;
       
-      if (stepToPlay !== lastStepRef.current) {
-        // Play sounds for this step
-        currentPattern.tracks.forEach((track) => {
-          if (track.muted) return;
-          
-          const step = track.steps[stepToPlay];
-          if (step?.active) {
-            playSound(track.soundId, step.velocity * track.volume);
-          }
-        });
-        
-        lastStepRef.current = stepToPlay;
+      const stepData = track.steps[step];
+      if (stepData?.active) {
+        playSound(track.soundId, stepData.velocity * track.volume);
       }
+    });
 
-      // Advance to next step
-      setTransport((prev) => {
-        const nextStep = (prev.currentStep + 1) % currentPattern.length;
-        const nextBar = nextStep === 0 ? prev.currentBar + 1 : prev.currentBar;
-        return {
-          ...prev,
-          currentStep: nextStep,
-          currentBar: nextBar,
-        };
-      });
+    // Advance step
+    const nextStep = (step + 1) % pattern.length;
+    const nextBar = nextStep === 0 ? currentBarRef.current + 1 : currentBarRef.current;
+    
+    currentStepRef.current = nextStep;
+    currentBarRef.current = nextBar;
+    
+    // Update state for UI (throttled)
+    setTransport((prev) => ({
+      ...prev,
+      currentStep: nextStep,
+      currentBar: nextBar,
+    }));
+  }, [playSound]);
 
-      nextStepTimeRef.current += stepDuration;
+  const startPlayback = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
-  }, [isInitialized, transport.currentStep, currentPattern, playSound, getStepDuration]);
+    
+    // Play first step immediately
+    playCurrentStep();
+    
+    // Set up interval for subsequent steps
+    const intervalMs = getStepIntervalMs();
+    intervalRef.current = window.setInterval(() => {
+      playCurrentStep();
+    }, intervalMs);
+  }, [playCurrentStep, getStepIntervalMs]);
 
+  const stopPlayback = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  // Handle play state changes
   useEffect(() => {
     if (transport.isPlaying) {
-      const scheduler = () => {
-        scheduleStep();
-        schedulerRef.current = requestAnimationFrame(scheduler);
-      };
-      
-      nextStepTimeRef.current = performance.now() / 1000;
-      lastStepRef.current = -1;
-      schedulerRef.current = requestAnimationFrame(scheduler);
+      startPlayback();
     } else {
-      if (schedulerRef.current) {
-        cancelAnimationFrame(schedulerRef.current);
-        schedulerRef.current = null;
-      }
+      stopPlayback();
     }
 
     return () => {
-      if (schedulerRef.current) {
-        cancelAnimationFrame(schedulerRef.current);
-      }
+      stopPlayback();
     };
-  }, [transport.isPlaying, scheduleStep]);
+  }, [transport.isPlaying, startPlayback, stopPlayback]);
+
+  // Update interval when BPM or resolution changes during playback
+  useEffect(() => {
+    if (transport.isPlaying && intervalRef.current) {
+      stopPlayback();
+      startPlayback();
+    }
+  }, [transport.bpm, transport.stepResolution, transport.tripletMode]);
 
   const togglePlay = useCallback(async () => {
     if (!isInitialized) {
@@ -150,6 +184,8 @@ export const useDrumMachine = () => {
   }, [isInitialized, initAudio]);
 
   const stop = useCallback(() => {
+    currentStepRef.current = 0;
+    currentBarRef.current = 0;
     setTransport((prev) => ({
       ...prev,
       isPlaying: false,
@@ -159,15 +195,23 @@ export const useDrumMachine = () => {
   }, []);
 
   const setBpm = useCallback((bpm: number) => {
-    setTransport((prev) => ({ ...prev, bpm: Math.max(20, Math.min(300, bpm)) }));
+    const clampedBpm = Math.max(20, Math.min(300, bpm));
+    bpmRef.current = clampedBpm;
+    setTransport((prev) => ({ ...prev, bpm: clampedBpm }));
   }, []);
 
   const setStepResolution = useCallback((resolution: 4 | 8 | 16 | 32) => {
+    stepResolutionRef.current = resolution;
     setTransport((prev) => ({ ...prev, stepResolution: resolution }));
   }, []);
 
   const setTripletMode = useCallback((mode: 'straight' | 'triplet') => {
+    tripletModeRef.current = mode;
     setTransport((prev) => ({ ...prev, tripletMode: mode }));
+  }, []);
+
+  const setTimeSignature = useCallback((sig: '4/4' | '3/4' | '6/8') => {
+    setTransport((prev) => ({ ...prev, timeSignature: sig }));
   }, []);
 
   const toggleStep = useCallback((trackId: string, stepIndex: number) => {
@@ -268,7 +312,7 @@ export const useDrumMachine = () => {
     }
   }, [patterns, currentPatternId]);
 
-  const addArrangementBlock = useCallback((patternId: string, startBar: number) => {
+  const addArrangementBlock = useCallback((patternId: string, startBar: number, trackRow: number = 0) => {
     const newBlock: ArrangementBlock = {
       id: `block-${Date.now()}`,
       patternId,
@@ -295,6 +339,22 @@ export const useDrumMachine = () => {
       blocks: prev.blocks.map((b) =>
         b.id === blockId ? { ...b, startBar: Math.max(0, newStartBar) } : b
       ),
+    }));
+  }, []);
+
+  const resizeArrangementBlock = useCallback((blockId: string, newLength: number) => {
+    setArrangement((prev) => ({
+      ...prev,
+      blocks: prev.blocks.map((b) =>
+        b.id === blockId ? { ...b, length: Math.max(1, newLength) } : b
+      ),
+    }));
+  }, []);
+
+  const setArrangementLength = useCallback((totalBars: number) => {
+    setArrangement((prev) => ({
+      ...prev,
+      totalBars: Math.max(4, totalBars),
     }));
   }, []);
 
@@ -325,6 +385,7 @@ export const useDrumMachine = () => {
     setBpm,
     setStepResolution,
     setTripletMode,
+    setTimeSignature,
     toggleStep,
     setStepVelocity,
     toggleTrackMute,
@@ -335,6 +396,8 @@ export const useDrumMachine = () => {
     addArrangementBlock,
     removeArrangementBlock,
     moveArrangementBlock,
+    resizeArrangementBlock,
+    setArrangementLength,
     setSelectedTrackId,
     triggerPad,
     initAudio,

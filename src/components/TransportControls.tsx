@@ -1,14 +1,7 @@
-import { TransportState } from '@/types/drumMachine';
+import { TransportState, TimeSignature } from '@/types/drumMachine';
 import { cn } from '@/lib/utils';
 import { Play, Pause, Square, Download } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface TransportControlsProps {
   transport: TransportState;
@@ -17,6 +10,7 @@ interface TransportControlsProps {
   onSetBpm: (bpm: number) => void;
   onSetResolution: (resolution: 4 | 8 | 16 | 32) => void;
   onSetTripletMode: (mode: 'straight' | 'triplet') => void;
+  onSetTimeSignature?: (sig: TimeSignature) => void;
   onExport?: () => void;
 }
 
@@ -27,13 +21,22 @@ export const TransportControls = ({
   onSetBpm,
   onSetResolution,
   onSetTripletMode,
+  onSetTimeSignature,
   onExport,
 }: TransportControlsProps) => {
+  // Preset tempos
+  const tempoPresets = [
+    { label: 'SLOW', bpm: 80 },
+    { label: 'MID', bpm: 120 },
+    { label: 'FAST', bpm: 140 },
+    { label: 'RAVE', bpm: 170 },
+  ];
+
   return (
-    <div className="transport-gradient border-t border-border px-6 py-4">
-      <div className="flex items-center justify-between max-w-6xl mx-auto">
+    <div className="transport-gradient px-4 py-3">
+      <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
         {/* Play controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={onTogglePlay}
             className={cn('transport-button', transport.isPlaying && 'playing')}
@@ -49,105 +52,133 @@ export const TransportControls = ({
           </button>
         </div>
 
-        {/* BPM */}
-        <div className="flex items-center gap-4">
+        {/* BPM Section */}
+        <div className="flex items-center gap-3">
           <div className="flex flex-col items-center">
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-              BPM
-            </span>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={transport.bpm}
-                onChange={(e) => onSetBpm(parseInt(e.target.value) || 120)}
-                className="w-16 bg-secondary border border-border rounded px-2 py-1 font-mono text-sm text-center focus:outline-none focus:ring-1 focus:ring-primary"
+            <span className="font-pixel text-[8px] text-muted-foreground mb-1">BPM</span>
+            <input
+              type="number"
+              value={transport.bpm}
+              onChange={(e) => onSetBpm(parseInt(e.target.value) || 120)}
+              className="pixel-input w-20 text-center text-xl"
+              min={20}
+              max={300}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-1">
+              {tempoPresets.map((preset) => (
+                <button
+                  key={preset.label}
+                  onClick={() => onSetBpm(preset.bpm)}
+                  className={cn(
+                    'px-2 py-1 font-pixel text-[6px] border-2 transition-all',
+                    transport.bpm === preset.bpm
+                      ? 'bg-primary text-primary-foreground border-primary glow-green'
+                      : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                  )}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <div className="w-32">
+              <Slider
+                value={[transport.bpm]}
+                onValueChange={([val]) => onSetBpm(val)}
                 min={20}
                 max={300}
+                step={1}
+                className="cursor-pointer"
               />
-              <div className="w-32">
-                <Slider
-                  value={[transport.bpm]}
-                  onValueChange={([val]) => onSetBpm(val)}
-                  min={20}
-                  max={300}
-                  step={1}
-                  className="cursor-pointer"
-                />
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Resolution & Triplet */}
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center">
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-              Resolution
-            </span>
-            <Select
-              value={transport.stepResolution.toString()}
-              onValueChange={(val) => onSetResolution(parseInt(val) as 4 | 8 | 16 | 32)}
-            >
-              <SelectTrigger className="w-20 h-8 font-mono text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="4">1/4</SelectItem>
-                <SelectItem value="8">1/8</SelectItem>
-                <SelectItem value="16">1/16</SelectItem>
-                <SelectItem value="32">1/32</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Time Signature */}
+        <div className="flex flex-col items-center">
+          <span className="font-pixel text-[8px] text-muted-foreground mb-1">TIME</span>
+          <div className="flex gap-1">
+            {(['4/4', '3/4', '6/8'] as TimeSignature[]).map((sig) => (
+              <button
+                key={sig}
+                onClick={() => onSetTimeSignature?.(sig)}
+                className={cn(
+                  'px-2 py-1 font-pixel-body text-lg border-2 transition-all',
+                  transport.timeSignature === sig
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                )}
+              >
+                {sig}
+              </button>
+            ))}
           </div>
+        </div>
 
-          <div className="flex flex-col items-center">
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-              Grid
-            </span>
-            <div className="flex rounded-lg overflow-hidden border border-border">
+        {/* Resolution */}
+        <div className="flex flex-col items-center">
+          <span className="font-pixel text-[8px] text-muted-foreground mb-1">GRID</span>
+          <div className="flex gap-1">
+            {([4, 8, 16, 32] as const).map((res) => (
               <button
-                onClick={() => onSetTripletMode('straight')}
+                key={res}
+                onClick={() => onSetResolution(res)}
                 className={cn(
-                  'px-3 py-1 font-mono text-xs transition-colors',
-                  transport.tripletMode === 'straight'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:text-foreground'
+                  'px-2 py-1 font-pixel-body text-lg border-2 transition-all min-w-[40px]',
+                  transport.stepResolution === res
+                    ? 'bg-secondary text-secondary-foreground border-secondary glow-accent'
+                    : 'bg-muted text-muted-foreground border-border hover:border-secondary/50'
                 )}
               >
-                Straight
+                1/{res}
               </button>
-              <button
-                onClick={() => onSetTripletMode('triplet')}
-                className={cn(
-                  'px-3 py-1 font-mono text-xs transition-colors',
-                  transport.tripletMode === 'triplet'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Triplet
-              </button>
-            </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Triplet */}
+        <div className="flex flex-col items-center">
+          <span className="font-pixel text-[8px] text-muted-foreground mb-1">MODE</span>
+          <div className="flex border-4 border-border overflow-hidden">
+            <button
+              onClick={() => onSetTripletMode('straight')}
+              className={cn(
+                'px-3 py-1 font-pixel text-[8px] transition-all',
+                transport.tripletMode === 'straight'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-card'
+              )}
+            >
+              STR
+            </button>
+            <button
+              onClick={() => onSetTripletMode('triplet')}
+              className={cn(
+                'px-3 py-1 font-pixel text-[8px] transition-all',
+                transport.tripletMode === 'triplet'
+                  ? 'bg-accent text-accent-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-card'
+              )}
+            >
+              TRP
+            </button>
           </div>
         </div>
 
         {/* Position display */}
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center">
-            <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
-              Position
+        <div className="flex flex-col items-center">
+          <span className="font-pixel text-[8px] text-muted-foreground mb-1">POS</span>
+          <div className="font-pixel-body text-2xl tabular-nums bg-muted px-3 py-1 border-4 border-border">
+            <span className="text-foreground">{String(transport.currentBar + 1).padStart(2, '0')}</span>
+            <span className="text-primary">:</span>
+            <span className="text-foreground">
+              {String(Math.floor(transport.currentStep / (transport.stepResolution / 4)) + 1).padStart(2, '0')}
             </span>
-            <div className="font-mono text-lg tabular-nums">
-              <span className="text-foreground">{transport.currentBar + 1}</span>
-              <span className="text-muted-foreground">.</span>
-              <span className="text-foreground">
-                {String(Math.floor(transport.currentStep / (transport.stepResolution / 4)) + 1).padStart(2, '0')}
-              </span>
-              <span className="text-muted-foreground">.</span>
-              <span className="text-muted-foreground">
-                {String((transport.currentStep % (transport.stepResolution / 4)) + 1).padStart(2, '0')}
-              </span>
-            </div>
+            <span className="text-primary">:</span>
+            <span className="text-muted-foreground">
+              {String((transport.currentStep % (transport.stepResolution / 4)) + 1).padStart(2, '0')}
+            </span>
           </div>
         </div>
 
@@ -157,7 +188,7 @@ export const TransportControls = ({
           className="transport-button flex items-center gap-2 px-4"
         >
           <Download className="w-4 h-4" />
-          <span className="font-mono text-xs uppercase tracking-wider">Export</span>
+          <span className="font-pixel text-[8px]">EXPORT</span>
         </button>
       </div>
     </div>
