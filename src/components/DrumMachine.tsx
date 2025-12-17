@@ -24,6 +24,7 @@ export const DrumMachine = () => {
     setBpm,
     setStepResolution,
     setTripletMode,
+    setTimeSignature,
     toggleStep,
     toggleTrackMute,
     toggleTrackSolo,
@@ -33,6 +34,8 @@ export const DrumMachine = () => {
     addArrangementBlock,
     removeArrangementBlock,
     moveArrangementBlock,
+    resizeArrangementBlock,
+    setArrangementLength,
     triggerPad,
     initAudio,
   } = useDrumMachine();
@@ -48,7 +51,7 @@ export const DrumMachine = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if typing in an input
-      if (e.target instanceof HTMLInputElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
 
       const key = e.key.toLowerCase();
       
@@ -72,8 +75,8 @@ export const DrumMachine = () => {
   }, [sounds, triggerPad, togglePlay, stop]);
 
   const handleExport = useCallback(async () => {
-    toast.info('Export functionality coming soon!', {
-      description: 'Audio export will render your arrangement to a WAV file.',
+    toast.info('Export coming soon!', {
+      description: 'Audio export will render your arrangement to WAV.',
     });
   }, []);
 
@@ -82,7 +85,7 @@ export const DrumMachine = () => {
   }, [triggerPad]);
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-screen flex flex-col bg-background overflow-hidden crt-flicker">
       <Navigation viewMode={viewMode} onSetViewMode={setViewMode} />
       
       {(viewMode === 'pattern' || viewMode === 'arrangement') && (
@@ -125,6 +128,8 @@ export const DrumMachine = () => {
             onAddBlock={addArrangementBlock}
             onRemoveBlock={removeArrangementBlock}
             onMoveBlock={moveArrangementBlock}
+            onResizeBlock={resizeArrangementBlock}
+            onSetLength={setArrangementLength}
             onSelectPattern={setCurrentPatternId}
           />
         )}
@@ -137,6 +142,7 @@ export const DrumMachine = () => {
         onSetBpm={setBpm}
         onSetResolution={setStepResolution}
         onSetTripletMode={setTripletMode}
+        onSetTimeSignature={setTimeSignature}
         onExport={handleExport}
       />
     </div>
