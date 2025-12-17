@@ -57,7 +57,7 @@ export const PatternView = ({
 
       {/* Step numbers */}
       <div className="flex border-b-2 border-border bg-card/50">
-        <div className="w-32 shrink-0" />
+        <div className="w-44 shrink-0" />
         <div className="flex-1 flex overflow-x-auto scrollbar-thin">
           {Array.from({ length: visibleSteps }).map((_, i) => (
             <div
@@ -91,7 +91,7 @@ export const PatternView = ({
               )}
             >
               {/* Track header */}
-              <div className="w-32 shrink-0 flex items-center gap-2 px-3 py-2 border-r-2 border-border bg-card/50">
+              <div className="w-44 shrink-0 flex items-center gap-2 px-3 py-2 border-r-2 border-border bg-card/50">
                 <button
                   onClick={() => onTriggerSound(sound.id)}
                   className={cn(
