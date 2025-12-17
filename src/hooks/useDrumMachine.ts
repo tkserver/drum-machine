@@ -5,24 +5,30 @@ import {
   ArrangementBlock,
   TransportState, 
   ViewMode,
-  DEFAULT_SOUNDS 
+  SoundKitId,
+  SOUND_KITS,
 } from '@/types/drumMachine';
 import { useAudioEngine } from './useAudioEngine';
+import { downloadPatternFile, loadPatternFromFile, LoadedPatternData } from '@/utils/patternStorage';
+import { toast } from 'sonner';
 
-const createEmptyPattern = (id: string, name: string, length: number = 16): Pattern => ({
-  id,
-  name,
-  length,
-  swing: 0,
-  tracks: DEFAULT_SOUNDS.map((sound) => ({
-    id: `${id}-${sound.id}`,
-    soundId: sound.id,
-    steps: Array(64).fill(null).map(() => ({ active: false, velocity: 1 })),
-    muted: false,
-    solo: false,
-    volume: 1,
-  })),
-});
+const createEmptyPattern = (id: string, name: string, length: number = 16, kitId: SoundKitId = 'classic'): Pattern => {
+  const kit = SOUND_KITS.find(k => k.id === kitId) || SOUND_KITS[0];
+  return {
+    id,
+    name,
+    length,
+    swing: 0,
+    tracks: kit.sounds.map((sound) => ({
+      id: `${id}-${sound.id}`,
+      soundId: sound.id,
+      steps: Array(64).fill(null).map(() => ({ active: false, velocity: 1 })),
+      muted: false,
+      solo: false,
+      volume: 1,
+    })),
+  };
+};
 
 const createEmptyArrangement = (): Arrangement => ({
   id: 'arr-1',
@@ -32,7 +38,7 @@ const createEmptyArrangement = (): Arrangement => ({
 });
 
 export const useDrumMachine = () => {
-  const { isInitialized, sounds, initAudio, playSound } = useAudioEngine();
+  const { isInitialized, sounds, currentKit, initAudio, switchKit, playSound } = useAudioEngine();
   
   const [viewMode, setViewMode] = useState<ViewMode>('pads');
   const [patterns, setPatterns] = useState<Pattern[]>([
@@ -54,7 +60,7 @@ export const useDrumMachine = () => {
   });
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
   
-  // Use refs for timing-critical values to avoid stale closure issues
+  // Refs for timing
   const isPlayingRef = useRef(false);
   const currentStepRef = useRef(0);
   const currentBarRef = useRef(0);
@@ -81,10 +87,8 @@ export const useDrumMachine = () => {
     const resolution = stepResolutionRef.current;
     const triplet = tripletModeRef.current;
     
-    // Calculate milliseconds per step
-    const beatsPerMinute = bpm;
+    const msPerBeat = 60000 / bpm;
     const stepsPerBeat = resolution / 4;
-    const msPerBeat = 60000 / beatsPerMinute;
     let msPerStep = msPerBeat / stepsPerBeat;
     
     if (triplet === 'triplet') {
@@ -104,24 +108,20 @@ export const useDrumMachine = () => {
 
     const step = currentStepRef.current;
     
-    // Play all active sounds for this step
     pattern.tracks.forEach((track) => {
       if (track.muted) return;
-      
       const stepData = track.steps[step];
       if (stepData?.active) {
         playSound(track.soundId, stepData.velocity * track.volume);
       }
     });
 
-    // Advance step
     const nextStep = (step + 1) % pattern.length;
     const nextBar = nextStep === 0 ? currentBarRef.current + 1 : currentBarRef.current;
     
     currentStepRef.current = nextStep;
     currentBarRef.current = nextBar;
     
-    // Update state for UI (throttled)
     setTransport((prev) => ({
       ...prev,
       currentStep: nextStep,
@@ -130,18 +130,10 @@ export const useDrumMachine = () => {
   }, [playSound]);
 
   const startPlayback = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    
-    // Play first step immediately
+    if (intervalRef.current) clearInterval(intervalRef.current);
     playCurrentStep();
-    
-    // Set up interval for subsequent steps
     const intervalMs = getStepIntervalMs();
-    intervalRef.current = window.setInterval(() => {
-      playCurrentStep();
-    }, intervalMs);
+    intervalRef.current = window.setInterval(playCurrentStep, intervalMs);
   }, [playCurrentStep, getStepIntervalMs]);
 
   const stopPlayback = useCallback(() => {
@@ -151,20 +143,15 @@ export const useDrumMachine = () => {
     }
   }, []);
 
-  // Handle play state changes
   useEffect(() => {
     if (transport.isPlaying) {
       startPlayback();
     } else {
       stopPlayback();
     }
-
-    return () => {
-      stopPlayback();
-    };
+    return () => stopPlayback();
   }, [transport.isPlaying, startPlayback, stopPlayback]);
 
-  // Update interval when BPM or resolution changes during playback
   useEffect(() => {
     if (transport.isPlaying && intervalRef.current) {
       stopPlayback();
@@ -174,24 +161,15 @@ export const useDrumMachine = () => {
 
   const togglePlay = useCallback(async () => {
     if (!isInitialized) {
-      await initAudio();
+      await initAudio(currentKit);
     }
-    
-    setTransport((prev) => ({
-      ...prev,
-      isPlaying: !prev.isPlaying,
-    }));
-  }, [isInitialized, initAudio]);
+    setTransport((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
+  }, [isInitialized, initAudio, currentKit]);
 
   const stop = useCallback(() => {
     currentStepRef.current = 0;
     currentBarRef.current = 0;
-    setTransport((prev) => ({
-      ...prev,
-      isPlaying: false,
-      currentStep: 0,
-      currentBar: 0,
-    }));
+    setTransport((prev) => ({ ...prev, isPlaying: false, currentStep: 0, currentBar: 0 }));
   }, []);
 
   const setBpm = useCallback((bpm: number) => {
@@ -218,17 +196,12 @@ export const useDrumMachine = () => {
     setPatterns((prev) =>
       prev.map((pattern) => {
         if (pattern.id !== currentPatternId) return pattern;
-        
         return {
           ...pattern,
           tracks: pattern.tracks.map((track) => {
             if (track.id !== trackId) return track;
-            
             const newSteps = [...track.steps];
-            newSteps[stepIndex] = {
-              ...newSteps[stepIndex],
-              active: !newSteps[stepIndex].active,
-            };
+            newSteps[stepIndex] = { ...newSteps[stepIndex], active: !newSteps[stepIndex].active };
             return { ...track, steps: newSteps };
           }),
         };
@@ -240,12 +213,10 @@ export const useDrumMachine = () => {
     setPatterns((prev) =>
       prev.map((pattern) => {
         if (pattern.id !== currentPatternId) return pattern;
-        
         return {
           ...pattern,
           tracks: pattern.tracks.map((track) => {
             if (track.id !== trackId) return track;
-            
             const newSteps = [...track.steps];
             newSteps[stepIndex] = { ...newSteps[stepIndex], velocity };
             return { ...track, steps: newSteps };
@@ -259,7 +230,6 @@ export const useDrumMachine = () => {
     setPatterns((prev) =>
       prev.map((pattern) => {
         if (pattern.id !== currentPatternId) return pattern;
-        
         return {
           ...pattern,
           tracks: pattern.tracks.map((track) => {
@@ -275,7 +245,6 @@ export const useDrumMachine = () => {
     setPatterns((prev) =>
       prev.map((pattern) => {
         if (pattern.id !== currentPatternId) return pattern;
-        
         return {
           ...pattern,
           tracks: pattern.tracks.map((track) => {
@@ -298,75 +267,126 @@ export const useDrumMachine = () => {
 
   const addPattern = useCallback(() => {
     const newId = `pattern-${patterns.length + 1}`;
-    const newPattern = createEmptyPattern(newId, `Pattern ${patterns.length + 1}`);
+    const newPattern = createEmptyPattern(newId, `Pattern ${patterns.length + 1}`, 16, currentKit);
     setPatterns((prev) => [...prev, newPattern]);
     return newPattern;
-  }, [patterns.length]);
+  }, [patterns.length, currentKit]);
 
   const deletePattern = useCallback((patternId: string) => {
     if (patterns.length <= 1) return;
-    
     setPatterns((prev) => prev.filter((p) => p.id !== patternId));
     if (currentPatternId === patternId) {
       setCurrentPatternId(patterns[0].id === patternId ? patterns[1].id : patterns[0].id);
     }
   }, [patterns, currentPatternId]);
 
-  const addArrangementBlock = useCallback((patternId: string, startBar: number, trackRow: number = 0) => {
+  const addArrangementBlock = useCallback((patternId: string, startBar: number) => {
     const newBlock: ArrangementBlock = {
       id: `block-${Date.now()}`,
       patternId,
       startBar,
       length: 4,
     };
-    
-    setArrangement((prev) => ({
-      ...prev,
-      blocks: [...prev.blocks, newBlock],
-    }));
+    setArrangement((prev) => ({ ...prev, blocks: [...prev.blocks, newBlock] }));
   }, []);
 
   const removeArrangementBlock = useCallback((blockId: string) => {
-    setArrangement((prev) => ({
-      ...prev,
-      blocks: prev.blocks.filter((b) => b.id !== blockId),
-    }));
+    setArrangement((prev) => ({ ...prev, blocks: prev.blocks.filter((b) => b.id !== blockId) }));
   }, []);
 
   const moveArrangementBlock = useCallback((blockId: string, newStartBar: number) => {
     setArrangement((prev) => ({
       ...prev,
-      blocks: prev.blocks.map((b) =>
-        b.id === blockId ? { ...b, startBar: Math.max(0, newStartBar) } : b
-      ),
+      blocks: prev.blocks.map((b) => b.id === blockId ? { ...b, startBar: Math.max(0, newStartBar) } : b),
     }));
   }, []);
 
   const resizeArrangementBlock = useCallback((blockId: string, newLength: number) => {
     setArrangement((prev) => ({
       ...prev,
-      blocks: prev.blocks.map((b) =>
-        b.id === blockId ? { ...b, length: Math.max(1, newLength) } : b
-      ),
+      blocks: prev.blocks.map((b) => b.id === blockId ? { ...b, length: Math.max(1, newLength) } : b),
     }));
   }, []);
 
   const setArrangementLength = useCallback((totalBars: number) => {
-    setArrangement((prev) => ({
-      ...prev,
-      totalBars: Math.max(4, totalBars),
-    }));
+    setArrangement((prev) => ({ ...prev, totalBars: Math.max(4, totalBars) }));
   }, []);
 
   const triggerPad = useCallback(async (soundId: string) => {
     if (!isInitialized) {
-      await initAudio();
+      await initAudio(currentKit);
     }
     playSound(soundId);
-  }, [isInitialized, initAudio, playSound]);
+  }, [isInitialized, initAudio, playSound, currentKit]);
+
+  // Kit switching
+  const changeKit = useCallback(async (kitId: SoundKitId) => {
+    await switchKit(kitId);
+    
+    // Update patterns to use new kit's sound IDs
+    const kit = SOUND_KITS.find(k => k.id === kitId) || SOUND_KITS[0];
+    setPatterns((prev) =>
+      prev.map((pattern) => ({
+        ...pattern,
+        tracks: pattern.tracks.map((track, index) => ({
+          ...track,
+          id: `${pattern.id}-${kit.sounds[index].id}`,
+          soundId: kit.sounds[index].id,
+        })),
+      }))
+    );
+    
+    toast.success(`Switched to ${kit.name} kit`);
+  }, [switchKit]);
+
+  // Save/Load functions
+  const savePattern = useCallback(() => {
+    const filename = `beatforge-${new Date().toISOString().slice(0, 10)}`;
+    downloadPatternFile(patterns, arrangement, transport, currentKit, filename);
+    toast.success('Pattern saved!');
+  }, [patterns, arrangement, transport, currentKit]);
+
+  const loadPattern = useCallback(async () => {
+    const data = await loadPatternFromFile();
+    if (!data) {
+      toast.error('Failed to load pattern file');
+      return;
+    }
+    
+    // Switch to the saved kit
+    await switchKit(data.kit);
+    
+    // Load all the data
+    setPatterns(data.patterns);
+    setArrangement(data.arrangement);
+    setBpm(data.bpm);
+    setTransport((prev) => ({
+      ...prev,
+      bpm: data.bpm,
+      timeSignature: data.timeSignature,
+      stepResolution: data.stepResolution,
+    }));
+    
+    if (data.patterns.length > 0) {
+      setCurrentPatternId(data.patterns[0].id);
+    }
+    
+    toast.success('Pattern loaded!');
+  }, [switchKit, setBpm]);
+
+  const clearAllPatterns = useCallback(() => {
+    setPatterns([
+      createEmptyPattern('pattern-1', 'Pattern 1', 16, currentKit),
+      createEmptyPattern('pattern-2', 'Pattern 2', 16, currentKit),
+      createEmptyPattern('pattern-3', 'Pattern 3', 16, currentKit),
+      createEmptyPattern('pattern-4', 'Pattern 4', 16, currentKit),
+    ]);
+    setArrangement(createEmptyArrangement());
+    setCurrentPatternId('pattern-1');
+    toast.success('All patterns cleared');
+  }, [currentKit]);
 
   return {
-    // State
     viewMode,
     patterns,
     currentPattern,
@@ -376,8 +396,8 @@ export const useDrumMachine = () => {
     sounds,
     selectedTrackId,
     isInitialized,
+    currentKit,
     
-    // Actions
     setViewMode,
     setCurrentPatternId,
     togglePlay,
@@ -401,5 +421,9 @@ export const useDrumMachine = () => {
     setSelectedTrackId,
     triggerPad,
     initAudio,
+    changeKit,
+    savePattern,
+    loadPattern,
+    clearAllPatterns,
   };
 };

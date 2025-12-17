@@ -19,6 +19,7 @@ export const DrumMachine = () => {
     arrangement,
     transport,
     sounds,
+    currentKit,
     togglePlay,
     stop,
     setBpm,
@@ -38,6 +39,10 @@ export const DrumMachine = () => {
     setArrangementLength,
     triggerPad,
     initAudio,
+    changeKit,
+    savePattern,
+    loadPattern,
+    clearAllPatterns,
   } = useDrumMachine();
 
   // Keyboard shortcuts
@@ -50,29 +55,32 @@ export const DrumMachine = () => {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
 
       const key = e.key.toLowerCase();
       
-      // Pad triggers
       if (key in keyMap && sounds[keyMap[key]]) {
         triggerPad(sounds[keyMap[key]].id);
         return;
       }
 
-      // Transport controls
       if (key === ' ') {
         e.preventDefault();
         togglePlay();
       } else if (key === 'escape') {
         stop();
+      } else if (e.ctrlKey && key === 's') {
+        e.preventDefault();
+        savePattern();
+      } else if (e.ctrlKey && key === 'o') {
+        e.preventDefault();
+        loadPattern();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sounds, triggerPad, togglePlay, stop]);
+  }, [sounds, triggerPad, togglePlay, stop, savePattern, loadPattern]);
 
   const handleExport = useCallback(async () => {
     toast.info('Export coming soon!', {
@@ -86,7 +94,15 @@ export const DrumMachine = () => {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden crt-flicker">
-      <Navigation viewMode={viewMode} onSetViewMode={setViewMode} />
+      <Navigation 
+        viewMode={viewMode} 
+        onSetViewMode={setViewMode}
+        currentKit={currentKit}
+        onChangeKit={changeKit}
+        onSave={savePattern}
+        onLoad={loadPattern}
+        onClear={clearAllPatterns}
+      />
       
       {(viewMode === 'pattern' || viewMode === 'arrangement') && (
         <PatternSelector
@@ -99,7 +115,6 @@ export const DrumMachine = () => {
         />
       )}
 
-      {/* Main content */}
       <main className="flex-1 flex overflow-hidden">
         {viewMode === 'pads' && (
           <PadsView
