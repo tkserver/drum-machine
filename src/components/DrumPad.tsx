@@ -36,15 +36,15 @@ export const DrumPad = ({ sound, onTrigger, isSelected, onSelect, keyLabel }: Dr
     >
       {/* Key label */}
       {keyLabel && (
-        <div className="absolute top-1 left-1 w-6 h-6 bg-muted flex items-center justify-center border-2 border-border">
-          <span className="font-pixel text-[8px] text-muted-foreground">{keyLabel}</span>
+        <div className="absolute top-2 left-2 w-8 h-8 bg-muted flex items-center justify-center border-2 border-border">
+          <span className="font-pixel text-xs text-muted-foreground">{keyLabel}</span>
         </div>
       )}
       
       {/* Color indicator */}
       <div 
         className={cn(
-          'absolute top-1 right-1 w-3 h-3',
+          'absolute top-2 right-2 w-4 h-4',
           sound.color,
           'opacity-80 group-hover:opacity-100 transition-opacity'
         )} 
@@ -52,7 +52,7 @@ export const DrumPad = ({ sound, onTrigger, isSelected, onSelect, keyLabel }: Dr
       
       {/* Sound name */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-pixel text-[8px] text-muted-foreground group-hover:text-foreground transition-colors uppercase">
+        <span className="font-pixel text-sm text-muted-foreground group-hover:text-foreground transition-colors uppercase">
           {sound.name}
         </span>
       </div>

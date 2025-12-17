@@ -13,12 +13,12 @@ export const Navigation = ({ viewMode, onSetViewMode }: NavigationProps) => {
       <div className="flex items-center justify-between px-4 py-3">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary flex items-center justify-center glow-green border-4 border-primary">
-            <span className="font-pixel text-[10px] text-primary-foreground">8B</span>
+          <div className="w-12 h-12 bg-primary flex items-center justify-center glow-green border-4 border-primary">
+            <span className="font-pixel text-sm text-primary-foreground">8B</span>
           </div>
           <div>
-            <h1 className="font-pixel text-sm text-foreground tracking-tight">BEATFORGE</h1>
-            <p className="font-pixel text-[6px] text-muted-foreground uppercase tracking-widest">
+            <h1 className="font-pixel text-base text-foreground tracking-tight">BEATFORGE</h1>
+            <p className="font-pixel text-[8px] text-muted-foreground uppercase tracking-widest">
               8-BIT DRUM MACHINE
             </p>
           </div>
