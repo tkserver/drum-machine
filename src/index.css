@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
 
 @layer base {
   :root {
@@ -84,11 +84,11 @@
 
 @layer utilities {
   .font-pixel {
-    font-family: 'Press Start 2P', cursive;
+    font-family: 'Share Tech Mono', monospace;
   }
   
   .font-pixel-body {
-    font-family: 'VT323', monospace;
+    font-family: 'Share Tech Mono', monospace;
   }
 
   .pixel-border {
