@@ -1,0 +1,6 @@
+# Netlify _redirects file for Drum Machine
+# Redirect all requests to the application to index.html for SPA routing
+/games/drummachine/* /games/drummachine/index.html 200
+
+# Redirect the root of the application
+/games/drummachine /games/drummachine/ 301

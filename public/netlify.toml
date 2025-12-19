@@ -1,0 +1,31 @@
+# Netlify configuration for Drum Machine
+# Redirect all requests to the application to index.html for SPA routing
+[[redirects]]
+  from = "/games/drummachine/*"
+  to = "/games/drummachine/index.html"
+  status = 200
+
+# Redirect the root of the application
+[[redirects]]
+  from = "/games/drummachine"
+  to = "/games/drummachine/"
+  status = 301
+
+# Serve static assets with proper caching headers
+[[headers]]
+  for = "/games/drummachine/*.{js,css,svg,png,jpg,jpeg,gif,ico}"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/games/drummachine/*.{html,json}"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Security headers
+[[headers]]
+  for = "/games/drummachine/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    X-XSS-Protection = "1; mode=block"
