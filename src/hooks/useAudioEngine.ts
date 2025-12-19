@@ -342,7 +342,7 @@ export const useAudioEngine = () => {
     setSounds(generatedSounds);
   }, [generateSoundsForKit]);
 
-  const playSound = useCallback((soundId: string, velocity: number = 1) => {
+  const playSound = useCallback((soundId: string, velocity: number = 1, pan?: number) => {
     const ctx = audioContextRef.current;
     const masterGain = masterGainRef.current;
     if (!ctx || !masterGain) return;
@@ -361,7 +361,8 @@ export const useAudioEngine = () => {
     gainNode.gain.value = sound.volume * velocity;
 
     const panNode = ctx.createStereoPanner();
-    panNode.pan.value = sound.pan;
+    // Use provided pan value or fall back to sound's default pan
+    panNode.pan.value = pan !== undefined ? pan : sound.pan;
 
     source.connect(gainNode);
     gainNode.connect(panNode);

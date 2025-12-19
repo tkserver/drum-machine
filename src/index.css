@@ -201,6 +201,45 @@
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: hsl(var(--primary));
   }
+
+  /* Fix range input styling */
+  input[type="range"] {
+    image-rendering: auto !important;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: hsl(var(--muted));
+    border-radius: 999px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: hsl(var(--primary));
+    border-radius: 50%;
+    border: 2px solid hsl(var(--border));
+    margin-top: -7px;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: hsl(var(--muted));
+    border-radius: 999px;
+    border: none;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: hsl(var(--primary));
+    border-radius: 50%;
+    border: 2px solid hsl(var(--border));
+    cursor: pointer;
+  }
 }
 
 @layer components {

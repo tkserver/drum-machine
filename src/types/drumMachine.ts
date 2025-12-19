@@ -19,6 +19,7 @@ export interface Track {
   muted: boolean;
   solo: boolean;
   volume: number;
+  pan: number;
 }
 
 export interface Pattern {
@@ -57,7 +58,7 @@ export interface TransportState {
   tripletMode: TripletMode;
 }
 
-export type ViewMode = 'pads' | 'pattern' | 'arrangement';
+export type ViewMode = 'pads' | 'pattern' | 'arrangement' | 'mixer';
 
 export const PATTERN_COLORS = [
   'bg-pattern-1',
@@ -216,6 +217,7 @@ export interface PatternFile {
       muted: boolean;
       solo: boolean;
       volume: number;
+      pan: number;
     }[];
   }[];
   arrangement: {

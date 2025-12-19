@@ -26,6 +26,7 @@ const createEmptyPattern = (id: string, name: string, length: number = 16, kitId
       muted: false,
       solo: false,
       volume: 1,
+      pan: sound.pan,
     })),
   };
 };
@@ -112,7 +113,7 @@ export const useDrumMachine = () => {
       if (track.muted) return;
       const stepData = track.steps[step];
       if (stepData?.active) {
-        playSound(track.soundId, stepData.velocity * track.volume);
+        playSound(track.soundId, stepData.velocity * track.volume, track.pan);
       }
     });
 
@@ -256,6 +257,36 @@ export const useDrumMachine = () => {
     );
   }, [currentPatternId]);
 
+  const setTrackVolume = useCallback((trackId: string, volume: number) => {
+    setPatterns((prev) =>
+      prev.map((pattern) => {
+        if (pattern.id !== currentPatternId) return pattern;
+        return {
+          ...pattern,
+          tracks: pattern.tracks.map((track) => {
+            if (track.id !== trackId) return track;
+            return { ...track, volume: Math.max(0, Math.min(2, volume)) };
+          }),
+        };
+      })
+    );
+  }, [currentPatternId]);
+
+  const setTrackPan = useCallback((trackId: string, pan: number) => {
+    setPatterns((prev) =>
+      prev.map((pattern) => {
+        if (pattern.id !== currentPatternId) return pattern;
+        return {
+          ...pattern,
+          tracks: pattern.tracks.map((track) => {
+            if (track.id !== trackId) return track;
+            return { ...track, pan: Math.max(-1, Math.min(1, pan)) };
+          }),
+        };
+      })
+    );
+  }, [currentPatternId]);
+
   const setPatternLength = useCallback((length: number) => {
     setPatterns((prev) =>
       prev.map((pattern) => {
@@ -312,11 +343,11 @@ export const useDrumMachine = () => {
     setArrangement((prev) => ({ ...prev, totalBars: Math.max(4, totalBars) }));
   }, []);
 
-  const triggerPad = useCallback(async (soundId: string) => {
+  const triggerPad = useCallback(async (soundId: string, pan?: number) => {
     if (!isInitialized) {
       await initAudio(currentKit);
     }
-    playSound(soundId);
+    playSound(soundId, 1, pan);
   }, [isInitialized, initAudio, playSound, currentKit]);
 
   // Kit switching
@@ -341,7 +372,7 @@ export const useDrumMachine = () => {
 
   // Save/Load functions
   const savePattern = useCallback(() => {
-    const filename = `beatforge-${new Date().toISOString().slice(0, 10)}`;
+    const filename = `drum-machine-pattern-${new Date().toISOString().slice(0, 10)}`;
     downloadPatternFile(patterns, arrangement, transport, currentKit, filename);
     toast.success('Pattern saved!');
   }, [patterns, arrangement, transport, currentKit]);
@@ -410,6 +441,8 @@ export const useDrumMachine = () => {
     setStepVelocity,
     toggleTrackMute,
     toggleTrackSolo,
+    setTrackVolume,
+    setTrackPan,
     setPatternLength,
     addPattern,
     deletePattern,

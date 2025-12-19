@@ -6,11 +6,13 @@ interface PadsViewProps {
   onTrigger: (soundId: string) => void;
   selectedSoundId?: string | null;
   onSelectSound?: (soundId: string) => void;
+  onVolumeChange?: (soundId: string, volume: number) => void;
+  onPanChange?: (soundId: string, pan: number) => void;
 }
 
 const KEY_LABELS = ['Q', 'W', 'E', 'R', 'A', 'S', 'D', 'F', 'Z', 'X', 'C', 'V', '1', '2', '3', '4'];
 
-export const PadsView = ({ sounds, onTrigger, selectedSoundId, onSelectSound }: PadsViewProps) => {
+export const PadsView = ({ sounds, onTrigger, selectedSoundId, onSelectSound, onVolumeChange, onPanChange }: PadsViewProps) => {
   return (
     <div className="flex-1 p-6 overflow-auto">
       <div className="max-w-3xl mx-auto">

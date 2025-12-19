@@ -43,7 +43,7 @@ export const downloadPatternFile = (
   arrangement: Arrangement,
   transport: TransportState,
   kit: SoundKitId,
-  filename: string = 'beatforge-pattern'
+  filename: string = 'drum-machine-pattern'
 ) => {
   const json = exportPatternFile(patterns, arrangement, transport, kit);
   const blob = new Blob([json], { type: 'application/json' });

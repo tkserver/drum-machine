@@ -30,7 +30,7 @@ export const Navigation = ({
             <span className="font-pixel text-sm text-primary-foreground">8B</span>
           </div>
           <div>
-            <h1 className="font-pixel text-base text-foreground tracking-tight">BEATFORGE</h1>
+            <h1 className="font-pixel text-base text-foreground tracking-tight">DRUM MACHINE</h1>
             <p className="font-pixel text-[8px] text-muted-foreground uppercase tracking-widest">
               8-BIT DRUM MACHINE
             </p>
@@ -59,6 +59,13 @@ export const Navigation = ({
           >
             <List className="w-4 h-4" />
             <span className="hidden sm:inline">ARRANGE</span>
+          </button>
+          <button
+            onClick={() => onSetViewMode('mixer')}
+            className={cn('nav-button flex items-center gap-2', viewMode === 'mixer' && 'active')}
+          >
+            <span className="w-4 h-4 flex items-center justify-center">🎛️</span>
+            <span className="hidden sm:inline">MIXER</span>
           </button>
         </div>
 
