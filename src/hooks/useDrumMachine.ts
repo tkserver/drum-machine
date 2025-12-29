@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { 
-  Pattern, 
-  Arrangement, 
+import {
+  Pattern,
+  Arrangement,
   ArrangementBlock,
-  TransportState, 
+  TransportState,
   ViewMode,
   SoundKitId,
   SOUND_KITS,
@@ -22,7 +22,7 @@ const createEmptyPattern = (id: string, name: string, length: number = 16, kitId
     tracks: kit.sounds.map((sound) => ({
       id: `${id}-${sound.id}`,
       soundId: sound.id,
-      steps: Array(64).fill(null).map(() => ({ active: false, velocity: 1 })),
+      steps: Array(length).fill(null).map(() => ({ active: false, velocity: 1 })),
       muted: false,
       solo: false,
       volume: 1,
@@ -40,7 +40,7 @@ const createEmptyArrangement = (): Arrangement => ({
 
 export const useDrumMachine = () => {
   const { isInitialized, sounds, currentKit, initAudio, switchKit, playSound } = useAudioEngine();
-  
+
   const [viewMode, setViewMode] = useState<ViewMode>('pads');
   const [patterns, setPatterns] = useState<Pattern[]>([
     createEmptyPattern('pattern-1', 'Pattern 1', 16),
@@ -58,9 +58,25 @@ export const useDrumMachine = () => {
     timeSignature: '4/4',
     stepResolution: 16,
     tripletMode: 'straight',
+    timelinePosition: {
+      timelineBar: 0,
+      timelineStep: 0,
+    },
+    arrangementPosition: {
+      currentBlockIndex: 0,
+      currentBlock: null,
+      currentBlockStep: 0,
+      currentBlockBar: 0,
+      currentBarStep: 0,
+    },
+    loop: {
+      enabled: false,
+      startBar: 0,
+      endBar: 15,
+    },
   });
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
-  
+
   // Refs for timing
   const isPlayingRef = useRef(false);
   const currentStepRef = useRef(0);
@@ -70,8 +86,29 @@ export const useDrumMachine = () => {
   const tripletModeRef = useRef<'straight' | 'triplet'>('straight');
   const patternsRef = useRef(patterns);
   const currentPatternIdRef = useRef(currentPatternId);
-  
+  const arrangementRef = useRef(arrangement);
+  const viewModeRef = useRef(viewMode);
+
+  // Arrangement playback tracking
+  const arrangementPlaybackRef = useRef({
+    currentBlockIndex: 0,
+    currentBlockStep: 0,
+    currentBlockBar: 0,
+    currentBlock: null as string | null,
+  });
+
+  // Independent timeline position tracking (pure musical time)
+  const timelinePositionRef = useRef({
+    timelineBar: 0,
+    timelineStep: 0,
+  });
+
+  const loopRef = useRef(transport.loop);
+
   const intervalRef = useRef<number | null>(null);
+  const lastTickTimeRef = useRef<number>(0);
+  const accumulatedTimeRef = useRef<number>(0);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { isPlayingRef.current = transport.isPlaying; }, [transport.isPlaying]);
@@ -80,68 +117,338 @@ export const useDrumMachine = () => {
   useEffect(() => { tripletModeRef.current = transport.tripletMode; }, [transport.tripletMode]);
   useEffect(() => { patternsRef.current = patterns; }, [patterns]);
   useEffect(() => { currentPatternIdRef.current = currentPatternId; }, [currentPatternId]);
+  useEffect(() => { arrangementRef.current = arrangement; }, [arrangement]);
+  useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
+  useEffect(() => { loopRef.current = transport.loop; }, [transport.loop]);
+
+  // Keep arrangement playback state in sync
+  useEffect(() => {
+    arrangementPlaybackRef.current = {
+      currentBlockIndex: transport.arrangementPosition.currentBlockIndex,
+      currentBlockStep: transport.arrangementPosition.currentBlockStep,
+      currentBlockBar: transport.arrangementPosition.currentBlockBar,
+      currentBlock: transport.arrangementPosition.currentBlock,
+    };
+  }, [transport.arrangementPosition]);
 
   const currentPattern = patterns.find((p) => p.id === currentPatternId) || patterns[0];
+
+  // Linear timeline advancement with loop support
+  const advanceTimelinePosition = useCallback(() => {
+    const currentTimelineBar = timelinePositionRef.current.timelineBar;
+    const currentTimelineStep = timelinePositionRef.current.timelineStep;
+    const stepResolution = stepResolutionRef.current;
+
+    // Get loop settings from ref to avoid stale closure issues
+    const { enabled: loopEnabled, startBar, endBar } = loopRef.current;
+    const totalBars = arrangementRef.current.totalBars;
+
+    let nextStep = currentTimelineStep + 1;
+    let nextBar = currentTimelineBar;
+
+    if (nextStep >= stepResolution) {
+      nextStep = 0;
+      nextBar += 1;
+
+      // Handle loop boundaries
+      if (loopEnabled && nextBar > endBar) {
+        nextBar = startBar;
+      }
+
+      // Handle end of arrangement (wrap or stop)
+      if (nextBar >= totalBars) {
+        if (loopEnabled) {
+          nextBar = startBar;
+        } else {
+          // If no loop, wrap to beginning or stay at end? 
+          // Wrapping to 0 is common for drum machines
+          nextBar = 0;
+        }
+      }
+    }
+
+    timelinePositionRef.current = {
+      timelineBar: nextBar,
+      timelineStep: nextStep,
+    };
+
+    // Update transport state with independent timeline position
+    // Also update the main currentStep/currentBar for display
+    setTransport((prev) => ({
+      ...prev,
+      timelinePosition: {
+        timelineBar: nextBar,
+        timelineStep: nextStep,
+      },
+      currentBar: nextBar,
+      currentStep: nextStep,
+    }));
+  }, []);
 
   const getStepIntervalMs = useCallback(() => {
     const bpm = bpmRef.current;
     const resolution = stepResolutionRef.current;
     const triplet = tripletModeRef.current;
-    
+
     const msPerBeat = 60000 / bpm;
     const stepsPerBeat = resolution / 4;
     let msPerStep = msPerBeat / stepsPerBeat;
-    
+
     if (triplet === 'triplet') {
       msPerStep = msPerStep * (2 / 3);
     }
-    
+
     return msPerStep;
   }, []);
 
-  const playCurrentStep = useCallback(() => {
-    if (!isPlayingRef.current) return;
-    
+  // Find which pattern block is currently playing at a given timeline position
+  const findPatternAtTimelinePosition = useCallback((timelineBar: number, timelineStepInBar: number) => {
+    const arrangement = arrangementRef.current;
     const patterns = patternsRef.current;
-    const patternId = currentPatternIdRef.current;
-    const pattern = patterns.find((p) => p.id === patternId);
-    if (!pattern) return;
+    const stepResolution = stepResolutionRef.current;
 
-    const step = currentStepRef.current;
-    
-    pattern.tracks.forEach((track) => {
-      if (track.muted) return;
-      const stepData = track.steps[step];
-      if (stepData?.active) {
-        playSound(track.soundId, stepData.velocity * track.volume, track.pan);
-      }
+    // Find the block that contains this timeline position
+    const block = arrangement.blocks.find(b => {
+      const blockEndBar = b.startBar + b.length;
+      return timelineBar >= b.startBar && timelineBar < blockEndBar;
     });
 
-    const nextStep = (step + 1) % pattern.length;
-    const nextBar = nextStep === 0 ? currentBarRef.current + 1 : currentBarRef.current;
-    
-    currentStepRef.current = nextStep;
-    currentBarRef.current = nextBar;
-    
+    if (!block) return null;
+
+    const pattern = patterns.find(p => p.id === block.patternId);
+    if (!pattern) return null;
+
+    // Calculate position within block correctly
+    const blockStartBar = block.startBar;
+    const relativeBar = timelineBar - blockStartBar;
+
+    // Steps per bar in the arrangement timeline
+    const stepsPerBar = stepResolution;
+
+    // Calculate the absolute step position within the block
+    const absoluteStepInBlock = (relativeBar * stepsPerBar) + timelineStepInBar;
+
+    // Map the absolute block step to the pattern step (supporting looped patterns within blocks)
+    const patternStep = absoluteStepInBlock % pattern.length;
+
+    return {
+      block,
+      pattern,
+      blockStep: patternStep,
+      absoluteStepInBlock,
+      relativeBar,
+    };
+  }, []);
+
+
+  // Update arrangement playback state (highlighting in UI)
+  const updateArrangementPlayback = useCallback((timelineBar: number, timelineStepInBar: number) => {
+    const arrangement = arrangementRef.current;
+    const patterns = patternsRef.current;
+    const stepResolution = stepResolutionRef.current;
+
+    // Find current block
+    const currentBlock = arrangement.blocks.find(b => {
+      const blockEndBar = b.startBar + b.length;
+      return timelineBar >= b.startBar && timelineBar < blockEndBar;
+    });
+
+    const currentBlockIndex = currentBlock ?
+      arrangement.blocks.findIndex(b => b.id === currentBlock.id) : 0;
+
+    let blockStep = 0;
+
+    if (currentBlock && currentBlock.patternId) {
+      const pattern = patterns.find(p => p.id === currentBlock.patternId);
+      if (pattern) {
+        const blockStartBar = currentBlock.startBar;
+        const relativeBar = timelineBar - blockStartBar;
+        blockStep = (relativeBar * stepResolution) + timelineStepInBar;
+      }
+    }
+
+    arrangementPlaybackRef.current = {
+      currentBlockIndex,
+      currentBlock: currentBlock?.patternId || null,
+      currentBlockStep: blockStep,
+      currentBlockBar: timelineBar,
+    };
+
     setTransport((prev) => ({
       ...prev,
-      currentStep: nextStep,
-      currentBar: nextBar,
+      arrangementPosition: {
+        currentBlockIndex,
+        currentBlock: currentBlock?.patternId || null,
+        currentBlockStep: blockStep,
+        currentBlockBar: timelineBar,
+        currentBarStep: timelineStepInBar,
+      },
     }));
-  }, [playSound]);
+  }, []);
 
+  // Optimized playback step function - separates timing from processing
+  const playCurrentStep = useCallback(() => {
+    if (!isPlayingRef.current) return;
+
+    const viewMode = viewModeRef.current;
+    const patterns = patternsRef.current;
+    const arrangement = arrangementRef.current;
+
+    if (viewMode === 'arrangement') {
+      // Use linear global timeline
+      const timelineBar = timelinePositionRef.current.timelineBar;
+      const timelineStep = timelinePositionRef.current.timelineStep;
+
+      // Find which pattern block is playing at this position for audio
+      const patternData = findPatternAtTimelinePosition(timelineBar, timelineStep);
+
+      if (patternData) {
+        const { pattern, blockStep } = patternData;
+
+        // Validate step index before accessing
+        if (blockStep >= 0 && blockStep < pattern.length) {
+          // Play the current step of the pattern
+          for (let i = 0; i < pattern.tracks.length; i++) {
+            const track = pattern.tracks[i];
+            if (!track.muted) {
+              const stepData = track.steps[blockStep];
+              if (stepData?.active) {
+                playSound(track.soundId, stepData.velocity * track.volume, track.pan);
+              }
+            }
+          }
+        }
+      }
+
+      // Update UI arrangement position state
+      updateArrangementPlayback(timelineBar, timelineStep);
+
+      // Advance to next linear position
+      advanceTimelinePosition();
+
+    } else if (viewMode === 'pattern' || viewMode === 'pads') {
+      // Pattern-based playback (for pads or pattern view)
+      const patternId = currentPatternIdRef.current;
+      const pattern = patterns.find((p) => p.id === patternId);
+      if (!pattern) return;
+
+      const step = currentStepRef.current;
+
+      // Play the current step
+      for (let i = 0; i < pattern.tracks.length; i++) {
+        const track = pattern.tracks[i];
+        if (!track.muted) {
+          const stepData = track.steps[step];
+          if (stepData?.active) {
+            playSound(track.soundId, stepData.velocity * track.volume, track.pan);
+          }
+        }
+      }
+
+      const nextStep = (step + 1) % pattern.length;
+      const nextBar = nextStep === 0 ? currentBarRef.current + 1 : currentBarRef.current;
+
+      currentStepRef.current = nextStep;
+      currentBarRef.current = nextBar;
+
+      // Sync timelinePositionRef so switching views is smooth
+      timelinePositionRef.current = {
+        timelineBar: nextBar,
+        timelineStep: nextStep,
+      };
+
+      setTransport((prev) => ({
+        ...prev,
+        currentStep: nextStep,
+        currentBar: nextBar,
+        timelinePosition: {
+          timelineBar: nextBar,
+          timelineStep: nextStep,
+        },
+      }));
+    }
+  }, [playSound, findPatternAtTimelinePosition, advanceTimelinePosition, updateArrangementPlayback]);
+
+  // Robust timing scheduler using performance.now() with drift correction
   const startPlayback = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    playCurrentStep();
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+
+    // Initialize timing reference
     const intervalMs = getStepIntervalMs();
-    intervalRef.current = window.setInterval(playCurrentStep, intervalMs);
-  }, [playCurrentStep, getStepIntervalMs]);
+    lastTickTimeRef.current = performance.now();
+    accumulatedTimeRef.current = 0;
+
+    // CRITICAL FIX: Initialize timeline properly
+    const { timelineBar, timelineStep } = timelinePositionRef.current;
+
+    console.log('🎵 TIMING DEBUG - starting robust scheduler:', {
+      intervalMs: Math.round(intervalMs * 100) / 100,
+      bpm: bpmRef.current,
+      stepResolution: stepResolutionRef.current,
+      viewMode: viewModeRef.current,
+      startPosition: { bar: timelineBar, step: timelineStep },
+      timestamp: Date.now()
+    });
+
+    // If in pattern mode, ensure currentStepRef is in sync with timeline
+    if (viewModeRef.current === 'pattern') {
+      currentStepRef.current = timelineStep;
+      currentBarRef.current = timelineBar;
+    }
+
+    // Initial step
+    playCurrentStep();
+
+    // Robust scheduler using setTimeout with drift correction
+    const scheduler = () => {
+      if (!isPlayingRef.current) return;
+
+      const now = performance.now();
+      const elapsed = now - lastTickTimeRef.current;
+      accumulatedTimeRef.current += elapsed;
+
+      // Check if it's time to play the next step
+      if (accumulatedTimeRef.current >= intervalMs) {
+        // Play the step
+        playCurrentStep();
+
+        // Reset timing reference
+        accumulatedTimeRef.current -= intervalMs;
+        lastTickTimeRef.current = now;
+
+        // Log timing consistency
+        if (Math.abs(accumulatedTimeRef.current) > intervalMs * 0.1) {
+          console.log('⚠️ TIMING DEBUG - drift correction applied:', {
+            accumulated: Math.round(accumulatedTimeRef.current * 100) / 100,
+            interval: intervalMs,
+            timestamp: Date.now()
+          });
+        }
+      }
+
+      // Schedule next check (10ms interval for precise timing)
+      animationFrameRef.current = requestAnimationFrame(() => {
+        setTimeout(scheduler, 10);
+      });
+    };
+
+    // Start the scheduler
+    scheduler();
+  }, [playCurrentStep, getStepIntervalMs, updateArrangementPlayback]);
 
   const stopPlayback = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    // Reset timing references
+    lastTickTimeRef.current = 0;
+    accumulatedTimeRef.current = 0;
   }, []);
 
   useEffect(() => {
@@ -170,7 +477,121 @@ export const useDrumMachine = () => {
   const stop = useCallback(() => {
     currentStepRef.current = 0;
     currentBarRef.current = 0;
-    setTransport((prev) => ({ ...prev, isPlaying: false, currentStep: 0, currentBar: 0 }));
+
+    // Reset timeline position
+    timelinePositionRef.current = {
+      timelineBar: 0,
+      timelineStep: 0,
+    };
+
+    // Reset arrangement playback state
+    arrangementPlaybackRef.current = {
+      currentBlockIndex: 0,
+      currentBlockStep: 0,
+      currentBlockBar: 0,
+      currentBlock: null,
+    };
+
+    setTransport((prev) => ({
+      ...prev,
+      isPlaying: false,
+      currentStep: 0,
+      currentBar: 0,
+      timelinePosition: {
+        timelineBar: 0,
+        timelineStep: 0,
+      },
+      arrangementPosition: {
+        currentBlockIndex: 0,
+        currentBlockStep: 0,
+        currentBlockBar: 0,
+        currentBlock: null,
+        currentBarStep: 0,
+      },
+    }));
+  }, []);
+
+  // Start from beginning (keeps playing state)
+  const startFromBeginning = useCallback(() => {
+    currentStepRef.current = 0;
+    currentBarRef.current = 0;
+
+    // Reset timeline position
+    timelinePositionRef.current = {
+      timelineBar: 0,
+      timelineStep: 0,
+    };
+
+    // Reset arrangement playback state
+    arrangementPlaybackRef.current = {
+      currentBlockIndex: 0,
+      currentBlockStep: 0,
+      currentBlockBar: 0,
+      currentBlock: null,
+    };
+
+    setTransport((prev) => ({
+      ...prev,
+      currentStep: 0,
+      currentBar: 0,
+      timelinePosition: {
+        timelineBar: 0,
+        timelineStep: 0,
+      },
+      arrangementPosition: {
+        currentBlockIndex: 0,
+        currentBlockStep: 0,
+        currentBlockBar: 0,
+        currentBlock: null,
+        currentBarStep: 0,
+      },
+    }));
+  }, []);
+
+  // Jump to timeline position
+  const jumpToTimelinePosition = useCallback((bar: number, step: number = 0) => {
+    const clampedBar = Math.max(0, bar);
+    const clampedStep = Math.max(0, step);
+
+    timelinePositionRef.current = {
+      timelineBar: clampedBar,
+      timelineStep: clampedStep,
+    };
+
+    currentStepRef.current = clampedStep;
+    currentBarRef.current = clampedBar;
+
+    setTransport((prev) => ({
+      ...prev,
+      currentStep: clampedStep,
+      currentBar: clampedBar,
+      timelinePosition: {
+        timelineBar: clampedBar,
+        timelineStep: clampedStep,
+      },
+    }));
+  }, []);
+
+  // Loop control functions
+  const setLoopEnabled = useCallback((enabled: boolean) => {
+    setTransport((prev) => ({
+      ...prev,
+      loop: {
+        ...prev.loop,
+        enabled,
+      },
+    }));
+  }, []);
+
+  const setLoopPoints = useCallback((startBar: number, endBar: number) => {
+    setTransport((prev) => ({
+      ...prev,
+      loop: {
+        ...prev.loop,
+        startBar: Math.max(0, startBar),
+        endBar: Math.max(startBar, endBar),
+      },
+    }));
   }, []);
 
   const setBpm = useCallback((bpm: number) => {
@@ -312,11 +733,19 @@ export const useDrumMachine = () => {
   }, [patterns, currentPatternId]);
 
   const addArrangementBlock = useCallback((patternId: string, startBar: number) => {
+    const pattern = patternsRef.current.find(p => p.id === patternId);
+    if (!pattern) return;
+
+    // Determine how many bars this pattern spans based on current step resolution
+    // Pattern length is in steps, resolution is steps per bar
+    const stepResolution = stepResolutionRef.current;
+    const barLength = Math.max(1, Math.ceil(pattern.length / stepResolution));
+
     const newBlock: ArrangementBlock = {
       id: `block-${Date.now()}`,
       patternId,
       startBar,
-      length: 4,
+      length: barLength,
     };
     setArrangement((prev) => ({ ...prev, blocks: [...prev.blocks, newBlock] }));
   }, []);
@@ -353,7 +782,7 @@ export const useDrumMachine = () => {
   // Kit switching
   const changeKit = useCallback(async (kitId: SoundKitId) => {
     await switchKit(kitId);
-    
+
     // Update patterns to use new kit's sound IDs
     const kit = SOUND_KITS.find(k => k.id === kitId) || SOUND_KITS[0];
     setPatterns((prev) =>
@@ -366,7 +795,7 @@ export const useDrumMachine = () => {
         })),
       }))
     );
-    
+
     toast.success(`Switched to ${kit.name} kit`);
   }, [switchKit]);
 
@@ -383,10 +812,10 @@ export const useDrumMachine = () => {
       toast.error('Failed to load pattern file');
       return;
     }
-    
+
     // Switch to the saved kit
     await switchKit(data.kit);
-    
+
     // Load all the data
     setPatterns(data.patterns);
     setArrangement(data.arrangement);
@@ -397,11 +826,11 @@ export const useDrumMachine = () => {
       timeSignature: data.timeSignature,
       stepResolution: data.stepResolution,
     }));
-    
+
     if (data.patterns.length > 0) {
       setCurrentPatternId(data.patterns[0].id);
     }
-    
+
     toast.success('Pattern loaded!');
   }, [switchKit, setBpm]);
 
@@ -428,11 +857,13 @@ export const useDrumMachine = () => {
     selectedTrackId,
     isInitialized,
     currentKit,
-    
+
     setViewMode,
     setCurrentPatternId,
     togglePlay,
     stop,
+    startFromBeginning,
+    jumpToTimelinePosition,
     setBpm,
     setStepResolution,
     setTripletMode,
@@ -458,5 +889,7 @@ export const useDrumMachine = () => {
     savePattern,
     loadPattern,
     clearAllPatterns,
+    setLoopEnabled,
+    setLoopPoints,
   };
 };

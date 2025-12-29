@@ -26,6 +26,7 @@ export const exportPatternFile = (
         muted: t.muted,
         solo: t.solo,
         volume: t.volume,
+        pan: t.pan,
       })),
     })),
     arrangement: {
@@ -90,6 +91,7 @@ export const parsePatternFile = (jsonString: string): LoadedPatternData | null =
         muted: t.muted,
         solo: t.solo,
         volume: t.volume,
+        pan: t.pan || 0,
       })),
     }));
     

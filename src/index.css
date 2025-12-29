@@ -121,6 +121,11 @@
                 0 0 20px hsl(var(--accent) / 0.5);
   }
 
+  .glow-orange {
+    box-shadow: 0 0 10px hsl(var(--pixel-orange)),
+                0 0 20px hsl(var(--pixel-orange) / 0.5);
+  }
+
   .glow-step {
     box-shadow: 0 0 8px hsl(var(--step-active)),
                 0 0 16px hsl(var(--step-active) / 0.5);

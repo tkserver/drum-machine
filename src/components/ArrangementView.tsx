@@ -7,24 +7,47 @@ interface ArrangementViewProps {
   arrangement: Arrangement;
   patterns: Pattern[];
   currentPatternId: string;
+  transport: {
+    timelinePosition: {
+      timelineBar: number;
+      timelineStep: number;
+    };
+    arrangementPosition: {
+      currentBlockIndex: number;
+      currentBlock: string | null;
+      currentBlockStep: number;
+      currentBlockBar: number;
+      currentBarStep: number;
+    };
+    isPlaying: boolean;
+    stepResolution: number;
+    loop?: {
+      enabled: boolean;
+      startBar: number;
+      endBar: number;
+    };
+  };
   onAddBlock: (patternId: string, startBar: number) => void;
   onRemoveBlock: (blockId: string) => void;
   onMoveBlock: (blockId: string, newStartBar: number) => void;
   onResizeBlock?: (blockId: string, newLength: number) => void;
   onSetLength?: (totalBars: number) => void;
   onSelectPattern: (patternId: string) => void;
+  onJumpToPosition?: (bar: number, step?: number) => void;
 }
 
 export const ArrangementView = ({
   arrangement,
   patterns,
   currentPatternId,
+  transport,
   onAddBlock,
   onRemoveBlock,
   onMoveBlock,
   onResizeBlock,
   onSetLength,
   onSelectPattern,
+  onJumpToPosition,
 }: ArrangementViewProps) => {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [draggedPattern, setDraggedPattern] = useState<string | null>(null);
@@ -118,6 +141,22 @@ export const ArrangementView = ({
   const handleDragLeave = () => {
     if (draggedPattern) {
       setDropIndicator(null);
+    }
+  };
+
+  // Handle timeline click to jump to position
+  const handleTimelineClick = (e: React.MouseEvent) => {
+    if (onJumpToPosition && !draggedPattern && !draggedBlock) {
+      const bar = getBarFromX(e.clientX);
+      const stepResolution = transport.stepResolution;
+      const rect = timelineRef.current?.getBoundingClientRect();
+      if (rect) {
+        const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0);
+        const step = Math.floor((x % barWidth) / barWidth * stepResolution);
+        onJumpToPosition(bar, Math.max(0, Math.min(stepResolution - 1, step)));
+      } else {
+        onJumpToPosition(bar, 0);
+      }
     }
   };
 
@@ -227,6 +266,7 @@ export const ArrangementView = ({
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
+            onClick={handleTimelineClick}
           >
             <div 
               className="relative min-h-full"
@@ -254,6 +294,108 @@ export const ArrangementView = ({
                 />
               )}
 
+              {/* Smooth playback cursor with independent timeline positioning */}
+              {transport.isPlaying && (() => {
+                const currentBar = transport.timelinePosition.timelineBar;
+                const currentStep = transport.timelinePosition.timelineStep;
+                const stepResolution = transport.stepResolution;
+                
+                // Ensure smooth cursor progression through all timeline steps
+                const safeStep = Math.max(0, Math.min(stepResolution - 1, currentStep));
+                
+                // Calculate precise cursor position with sub-step precision for smooth movement
+                const stepPosition = safeStep / stepResolution;
+                const cursorLeft = (currentBar + stepPosition) * barWidth;
+                
+                // DEBUG LOG: Only log significant cursor movements to avoid spam
+                if (currentStep % 4 === 0 || currentStep === 0) {
+                  console.log('🎵 VIEW DEBUG - independent timeline cursor:', {
+                    currentBar,
+                    currentStep,
+                    safeStep,
+                    stepResolution,
+                    stepPosition,
+                    cursorLeft: Math.round(cursorLeft),
+                    barWidth,
+                    timestamp: Date.now()
+                  });
+                }
+                
+                return (
+                  <>
+                    {/* Primary cursor line with smooth animation */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-accent glow-accent z-30 transition-all duration-75 ease-linear"
+                      style={{ 
+                        left: cursorLeft,
+                        willChange: 'left'
+                      }}
+                      title={`Timeline: Bar ${currentBar + 1}, Step ${safeStep + 1}/${stepResolution}`}
+                    />
+                    
+                    {/* Enhanced active region highlight for current bar */}
+                    <div
+                      className="absolute top-0 bottom-0 bg-accent/8 z-20 pointer-events-none border-l-2 border-accent/20"
+                      style={{
+                        left: currentBar * barWidth,
+                        width: barWidth,
+                      }}
+                    />
+                    
+                    {/* Step grid highlight for current step with pulse animation */}
+                    <div
+                      className="absolute top-0 bottom-0 bg-accent/5 z-10 pointer-events-none animate-pulse"
+                      style={{
+                        left: (currentBar + stepPosition) * barWidth - 1,
+                        width: (barWidth / stepResolution) + 2,
+                      }}
+                    />
+                    
+                    {/* Progress indicator for current step */}
+                    <div
+                      className="absolute top-0 h-1 bg-accent z-40 pointer-events-none"
+                      style={{
+                        left: (currentBar + stepPosition) * barWidth,
+                        width: (barWidth / stepResolution) * 0.8,
+                      }}
+                    />
+                  </>
+                );
+              })()}
+              
+              {/* Enhanced beat indicators with smooth highlighting based on independent timeline */}
+              {transport.isPlaying && (() => {
+                const currentBar = transport.timelinePosition.timelineBar;
+                const currentStep = transport.timelinePosition.timelineStep;
+                const stepResolution = transport.stepResolution;
+                
+                // Show beat indicators at quarter note boundaries
+                const beatsPerBar = 4;
+                const stepsPerBeat = stepResolution / 4;
+                const beatMarkers = [];
+                
+                for (let beat = 0; beat < beatsPerBar; beat++) {
+                  const beatStep = beat * stepsPerBeat;
+                  const beatPosition = beatStep / stepResolution;
+                  const beatLeft = (currentBar + beatPosition) * barWidth;
+                  
+                  // Highlight current beat based on independent timeline
+                  const isCurrentBeat = Math.floor(currentStep / stepsPerBeat) === beat;
+                  
+                  beatMarkers.push(
+                    <div
+                      key={beat}
+                      className={`absolute top-0 bottom-0 z-20 transition-colors duration-150 ${
+                        isCurrentBeat ? 'w-0.5 bg-accent' : 'w-px bg-accent/30'
+                      }`}
+                      style={{ left: beatLeft }}
+                    />
+                  );
+                }
+                
+                return beatMarkers;
+              })()}
+
               {/* Blocks */}
               {arrangement.blocks.map((block) => {
                 const pattern = patterns.find((p) => p.id === block.patternId);
@@ -261,6 +403,8 @@ export const ArrangementView = ({
                 
                 const isDragging = draggedBlock === block.id;
                 const displayBar = isDragging && dropIndicator !== null ? dropIndicator : block.startBar;
+                const isCurrentlyPlaying = transport.isPlaying && 
+                  transport.arrangementPosition.currentBlock === block.patternId;
 
                 return (
                   <div
@@ -268,10 +412,11 @@ export const ArrangementView = ({
                     className={cn(
                       'absolute h-12 cursor-move flex items-center justify-between px-2 group',
                       getPatternColor(block.patternId),
-                      'border-4 transition-transform',
+                      'border-4 transition-all duration-200',
                       selectedBlockId === block.id
                         ? 'border-foreground glow-green z-10'
                         : 'border-transparent hover:border-foreground/50',
+                      isCurrentlyPlaying && 'ring-2 ring-accent ring-opacity-60 shadow-lg shadow-accent/25 bg-gradient-to-r from-accent/10 to-accent/5',
                       isDragging && 'opacity-70'
                     )}
                     style={{
@@ -324,6 +469,71 @@ export const ArrangementView = ({
                   </div>
                 </div>
               )}
+              
+              {/* Loop indicators with bar numbers */}
+              {transport.loop && (() => {
+                const loopEnabled = transport.loop.enabled;
+                const loopStartBar = transport.loop.startBar;
+                const loopEndBar = transport.loop.endBar;
+                
+                if (!loopEnabled) return null;
+                
+                return (
+                  <>
+                    {/* Loop start indicator with bar number */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-orange-500 z-25"
+                      style={{ left: loopStartBar * barWidth }}
+                      title={`Loop Start: Bar ${loopStartBar + 1}`}
+                    />
+                    <div
+                      className="absolute top-0 bg-orange-500 text-orange-100 text-xs font-pixel px-1 py-0.5 z-30"
+                      style={{ 
+                        left: loopStartBar * barWidth + 2,
+                        transform: 'translateY(-100%)'
+                      }}
+                    >
+                      {loopStartBar + 1}
+                    </div>
+                    
+                    {/* Loop end indicator with bar number */}
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-orange-500 z-25"
+                      style={{ left: (loopEndBar + 1) * barWidth }}
+                      title={`Loop End: Bar ${loopEndBar + 1}`}
+                    />
+                    <div
+                      className="absolute top-0 bg-orange-500 text-orange-100 text-xs font-pixel px-1 py-0.5 z-30"
+                      style={{ 
+                        left: (loopEndBar + 1) * barWidth + 2,
+                        transform: 'translateY(-100%)'
+                      }}
+                    >
+                      {loopEndBar + 1}
+                    </div>
+                    
+                    {/* Loop region highlight */}
+                    <div
+                      className="absolute top-0 bottom-0 bg-orange-500/10 z-20 pointer-events-none border-l-2 border-r-2 border-orange-500/30"
+                      style={{
+                        left: loopStartBar * barWidth,
+                        width: (loopEndBar - loopStartBar + 1) * barWidth,
+                      }}
+                    />
+                    
+                    {/* Loop range label */}
+                    <div
+                      className="absolute top-2 bg-orange-500/90 text-orange-100 text-xs font-pixel px-2 py-1 z-30 rounded"
+                      style={{
+                        left: (loopStartBar * barWidth) + 4,
+                        top: 4,
+                      }}
+                    >
+                      LOOP: {loopStartBar + 1}-{loopEndBar + 1}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -331,9 +541,14 @@ export const ArrangementView = ({
 
       {/* Instructions */}
       <div className="p-3 border-t-4 border-border bg-card">
-        <p className="font-pixel text-xs text-muted-foreground text-center">
-          DRAG FROM LIBRARY • CLICK TO SELECT • DRAG TO MOVE • DEL TO REMOVE
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="font-pixel text-xs text-muted-foreground">
+            DRAG FROM LIBRARY • CLICK TO SELECT • DRAG TO MOVE • DEL TO REMOVE
+          </p>
+          <p className="font-pixel text-xs text-accent">
+            ▶ PLAYBACK TRAVERSES ARRANGEMENT TIMELINE
+          </p>
+        </div>
       </div>
     </div>
   );

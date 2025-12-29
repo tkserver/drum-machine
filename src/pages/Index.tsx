@@ -5,10 +5,10 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>BEATFORGE - Professional Drum Machine</title>
+        <title>DRUM MACHINE - Professional Drum Machine</title>
         <meta 
           name="description" 
-          content="Create beats with BEATFORGE, a professional 16-voice drum machine featuring pattern sequencing, arrangement tools, and audio export." 
+          content="Create beats with DRUM MACHINE, a professional 16-voice drum machine featuring pattern sequencing, arrangement tools, and audio export." 
         />
       </Helmet>
       <DrumMachine />

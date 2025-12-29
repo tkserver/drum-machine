@@ -23,6 +23,8 @@ export const DrumMachine = () => {
     currentKit,
     togglePlay,
     stop,
+    startFromBeginning,
+    jumpToTimelinePosition,
     setBpm,
     setStepResolution,
     setTripletMode,
@@ -46,6 +48,8 @@ export const DrumMachine = () => {
     savePattern,
     loadPattern,
     clearAllPatterns,
+    setLoopEnabled,
+    setLoopPoints,
   } = useDrumMachine();
 
   // Keyboard shortcuts
@@ -189,12 +193,20 @@ export const DrumMachine = () => {
             arrangement={arrangement}
             patterns={patterns}
             currentPatternId={currentPatternId}
+            transport={{
+              timelinePosition: transport.timelinePosition,
+              arrangementPosition: transport.arrangementPosition,
+              isPlaying: transport.isPlaying,
+              stepResolution: transport.stepResolution,
+              loop: transport.loop, // Pass loop settings for visualization
+            }}
             onAddBlock={addArrangementBlock}
             onRemoveBlock={removeArrangementBlock}
             onMoveBlock={moveArrangementBlock}
             onResizeBlock={resizeArrangementBlock}
             onSetLength={setArrangementLength}
             onSelectPattern={setCurrentPatternId}
+            onJumpToPosition={jumpToTimelinePosition}
           />
         )}
       </main>
@@ -203,10 +215,13 @@ export const DrumMachine = () => {
         transport={transport}
         onTogglePlay={togglePlay}
         onStop={stop}
+        onStartFromBeginning={startFromBeginning}
         onSetBpm={setBpm}
         onSetResolution={setStepResolution}
         onSetTripletMode={setTripletMode}
         onSetTimeSignature={setTimeSignature}
+        onSetLoopEnabled={setLoopEnabled}
+        onSetLoopPoints={setLoopPoints}
         onExport={handleExport}
       />
     </div>

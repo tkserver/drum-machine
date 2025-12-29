@@ -12,10 +12,10 @@ interface NavigationProps {
   onClear: () => void;
 }
 
-export const Navigation = ({ 
-  viewMode, 
-  onSetViewMode, 
-  currentKit, 
+export const Navigation = ({
+  viewMode,
+  onSetViewMode,
+  currentKit,
   onChangeKit,
   onSave,
   onLoad,
@@ -26,15 +26,20 @@ export const Navigation = ({
       <div className="flex items-center justify-between px-4 py-3">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary flex items-center justify-center glow-green border-4 border-primary">
-            <span className="font-pixel text-sm text-primary-foreground">8B</span>
-          </div>
-          <div>
-            <h1 className="font-pixel text-base text-foreground tracking-tight">DRUM MACHINE</h1>
-            <p className="font-pixel text-[8px] text-muted-foreground uppercase tracking-widest">
-              8-BIT DRUM MACHINE
-            </p>
-          </div>
+          <a
+            href="https://tonykorologos.com/games"
+            className="flex items-center gap-3 transition-opacity hover:opacity-80"
+          >
+            <div className="w-12 h-12 bg-primary flex items-center justify-center glow-green border-4 border-primary">
+              <span className="font-pixel text-sm text-primary-foreground">8B</span>
+            </div>
+            <div>
+              <h1 className="font-pixel text-base text-foreground tracking-tight">DRUM MACHINE</h1>
+              <p className="font-pixel text-[8px] text-muted-foreground uppercase tracking-widest">
+                8-BIT DRUM MACHINE
+              </p>
+            </div>
+          </a>
         </div>
 
         {/* View tabs */}

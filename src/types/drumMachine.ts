@@ -56,6 +56,25 @@ export interface TransportState {
   timeSignature: TimeSignature;
   stepResolution: StepResolution;
   tripletMode: TripletMode;
+  // Independent timeline position for cursor (pure musical time)
+  timelinePosition: {
+    timelineBar: number;
+    timelineStep: number;
+  };
+  // Arrangement-specific playback tracking
+  arrangementPosition: {
+    currentBlockIndex: number;
+    currentBlock: string | null;
+    currentBlockStep: number;
+    currentBlockBar: number;
+    currentBarStep: number; // Current step within the current bar for cursor positioning
+  };
+  // Loop functionality
+  loop: {
+    enabled: boolean;
+    startBar: number;
+    endBar: number;
+  };
 }
 
 export type ViewMode = 'pads' | 'pattern' | 'arrangement' | 'mixer';
